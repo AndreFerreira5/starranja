@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import logging
-from logging_config import configure_logging
+from .logging_config import configure_logging
 
 
 # configure logging globally
