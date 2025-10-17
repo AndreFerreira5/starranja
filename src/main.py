@@ -1,8 +1,9 @@
-from fastapi import FastAPI
 import logging
-import uvicorn
-from .logging_config import configure_logging
 
+import uvicorn
+from fastapi import FastAPI
+
+from .logging_config import configure_logging
 
 # configure logging globally
 configure_logging()

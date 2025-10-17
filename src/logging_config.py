@@ -11,4 +11,4 @@ def configure_logging():
             logging.FileHandler("app.log")
         ]
     )
-    
+
