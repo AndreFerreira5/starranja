@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 import logging
+import uvicorn
 from .logging_config import configure_logging
 
 
