@@ -2,22 +2,22 @@
 Password Hashing and Verification Service
 """
 
+import logging
+
 import argon2
 from argon2 import PasswordHasher
 from argon2.exceptions import (
-    VerifyMismatchError,
-    VerificationError,
     HashingError,
-    InvalidHashError
+    InvalidHashError,
+    VerificationError,
+    VerifyMismatchError,
 )
-from typing import Tuple
-import logging
 
 from src.authentication.config import settings
 from src.authentication.exceptions import (
+    InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
-    InvalidPasswordError
 )
 
 # Configure logging - note: never log passwords or hashes in production
@@ -44,7 +44,7 @@ class PasswordService:
             PasswordService: The singleton instance
         """
         if cls._instance is None:
-            cls._instance = super(PasswordService, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._initialize_hasher()
         return cls._instance
 
@@ -61,14 +61,13 @@ class PasswordService:
                 parallelism=settings.ARGON2_PARALLELISM,
                 hash_len=settings.ARGON2_HASH_LENGTH,
                 salt_len=settings.ARGON2_SALT_LENGTH,
-                type=argon2.Type.ID  # Argon2id variant
+                type=argon2.Type.ID,  # Argon2id variant
             )
             logger.info("PasswordHasher initialized with configured parameters")
         except Exception as e:
             logger.error(f"Failed to initialize PasswordHasher: {str(e)}")
             raise PasswordHashingError(
-                "Failed to initialize password hashing service",
-                original_error=e
+                "Failed to initialize password hashing service", original_error=e
             )
 
     def _validate_password(self, password: str) -> None:
@@ -86,7 +85,8 @@ class PasswordService:
 
         if len(password) < settings.MIN_PASSWORD_LENGTH:
             raise InvalidPasswordError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters long"
+                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} "
+                "characters long"
             )
 
         if len(password) > settings.MAX_PASSWORD_LENGTH:
@@ -120,14 +120,13 @@ class PasswordService:
         except HashingError as e:
             logger.error(f"Argon2 hashing error: {str(e)}")
             raise PasswordHashingError(
-                "Failed to hash password due to system error",
-                original_error=e
+                "Failed to hash password due to system error", original_error=e
             )
         except Exception as e:
             logger.error(f"Unexpected error during password hashing: {str(e)}")
             raise PasswordHashingError(
                 "An unexpected error occurred while hashing the password",
-                original_error=e
+                original_error=e,
             )
 
     def check_password(self, hashed_password: str, plain_password: str) -> bool:
@@ -166,22 +165,20 @@ class PasswordService:
         except InvalidHashError as e:
             logger.warning(f"Invalid hash format encountered: {str(e)}")
             raise PasswordVerificationError(
-                "The stored password hash is invalid or corrupted",
-                original_error=e
+                "The stored password hash is invalid or corrupted", original_error=e
             )
 
         except VerificationError as e:
             logger.error(f"Argon2 verification error: {str(e)}")
             raise PasswordVerificationError(
-                "Failed to verify password due to system error",
-                original_error=e
+                "Failed to verify password due to system error", original_error=e
             )
 
         except Exception as e:
             logger.error(f"Unexpected error during password verification: {str(e)}")
             raise PasswordVerificationError(
                 "An unexpected error occurred while verifying the password",
-                original_error=e
+                original_error=e,
             )
 
     def check_needs_rehash(self, hashed_password: str) -> bool:
@@ -205,10 +202,8 @@ class PasswordService:
             return False
 
     def verify_and_update(
-            self,
-            hashed_password: str,
-            plain_password: str
-    ) -> Tuple[bool, str | None]:
+        self, hashed_password: str, plain_password: str
+    ) -> tuple[bool, str | None]:
         """
         Verify password and return updated hash if parameters have changed.
 
@@ -244,6 +239,7 @@ class PasswordService:
 
 # Module-level convenience functions for backward compatibility
 _password_service = PasswordService()
+
 
 def hash_password(plain_password: str) -> str:
     """

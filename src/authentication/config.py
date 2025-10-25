@@ -3,9 +3,8 @@ Centralizes configuration parameters for the application,
 including security-critical settings for password hashing.
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, field_validator
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -19,50 +18,37 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
 
     # Database settings
-    DATABASE_URL: Optional[str] = None
+    DATABASE_URL: str | None = None
 
     # Password Hashing Configuration
     ARGON2_TIME_COST: int = Field(
-        default=3,
-        description="Number of iterations (recommended: 2-4 for Argon2id)"
+        default=3, description="Number of iterations (recommended: 2-4 for Argon2id)"
     )
 
     ARGON2_MEMORY_COST: int = Field(
         default=65536,  # 64 MiB
-        description="Memory usage in KiB (recommended: 65536 KiB = 64 MiB)"
+        description="Memory usage in KiB (recommended: 65536 KiB = 64 MiB)",
     )
 
     ARGON2_PARALLELISM: int = Field(
-        default=4,
-        description="Number of parallel threads (recommended: 4)"
+        default=4, description="Number of parallel threads (recommended: 4)"
     )
 
     ARGON2_HASH_LENGTH: int = Field(
-        default=32,
-        description="Length of the hash in bytes"
+        default=32, description="Length of the hash in bytes"
     )
 
     ARGON2_SALT_LENGTH: int = Field(
-        default=16,
-        description="Length of the salt in bytes"
+        default=16, description="Length of the salt in bytes"
     )
 
     # Password Policy
-    MIN_PASSWORD_LENGTH: int = Field(
-        default=8,
-        description="Minimum password length"
-    )
+    MIN_PASSWORD_LENGTH: int = Field(default=8, description="Minimum password length")
 
-    MAX_PASSWORD_LENGTH: int = Field(
-        default=128,
-        description="Maximum password length"
-    )
+    MAX_PASSWORD_LENGTH: int = Field(default=128, description="Maximum password length")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )
 
     @field_validator("ARGON2_TIME_COST")
@@ -96,6 +82,7 @@ class Settings(BaseSettings):
         if v < 8:
             raise ValueError("Minimum password length should be at least 8")
         return v
+
 
 # Global settings instance
 settings = Settings()

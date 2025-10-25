@@ -4,8 +4,6 @@ operations, providing clear error handling
 and appropriate HTTP status code mappings.
 """
 
-from typing import Optional
-
 
 class AuthenticationError(Exception):
     """
@@ -36,7 +34,11 @@ class PasswordHashingError(AuthenticationError):
     insufficient memory or invalid configuration.
     """
 
-    def __init__(self, message: str = "Password hashing failed", original_error: Optional[Exception] = None):
+    def __init__(
+        self,
+        message: str = "Password hashing failed",
+        original_error: Exception | None = None,
+    ):
         """
         Initialize the password hashing error.
 
@@ -56,7 +58,11 @@ class PasswordVerificationError(AuthenticationError):
     during verification (distinct from incorrect passwords).
     """
 
-    def __init__(self, message: str = "Password verification failed", original_error: Optional[Exception] = None):
+    def __init__(
+        self,
+        message: str = "Password verification failed",
+        original_error: Exception | None = None,
+    ):
         """
         Initialize the password verification error.
 
