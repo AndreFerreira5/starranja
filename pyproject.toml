@@ -54,3 +54,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+[tool.mypy]
+mypy_path = "src"
+python_version = "3.13"
+warn_unused_configs = true
+explicit_package_bases = true
