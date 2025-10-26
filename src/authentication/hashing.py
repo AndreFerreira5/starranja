@@ -13,8 +13,8 @@ from argon2.exceptions import (
     VerifyMismatchError,
 )
 
-from src.authentication.config import settings
-from src.authentication.exceptions import (
+from authentication.config import settings
+from authentication.exceptions import (
     InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
