@@ -12,8 +12,8 @@ fileConfig(config.config_file_name)
 target_metadata = None
 
 # Load environment variables from .env file (for local development)
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', '..', '..'))
-CONFIG_FILENAME = '.env'
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../..", "..", ".."))
+CONFIG_FILENAME = ".env"
 
 # Load the environment file using the full path
 load_result = load_dotenv(os.path.join(ROOT_DIR, CONFIG_FILENAME), override=True)
@@ -40,7 +40,7 @@ def run_migrations_offline():
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"}
+        dialect_opts={"paramstyle": "named"},
     )
 
     # print(context.get_current_revision())
@@ -52,9 +52,7 @@ def run_migrations_online():
     connectable = sa.create_engine(get_url())
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
