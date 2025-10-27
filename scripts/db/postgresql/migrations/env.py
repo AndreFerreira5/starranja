@@ -3,9 +3,14 @@ from logging.config import fileConfig
 
 import sqlalchemy as sa
 from alembic import context
+from typing import TYPE_CHECKING
 from dotenv import load_dotenv
 
 config = context.config
+
+if TYPE_CHECKING:
+    # ensure fileConfig argument is treated as a string path
+    assert isinstance(config.config_file_name, str)
 
 # Interpret the config file for Python's standard logging.
 fileConfig(config.config_file_name)
