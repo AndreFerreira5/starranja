@@ -1,9 +1,9 @@
 import os
 from logging.config import fileConfig
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from alembic import context
-from typing import TYPE_CHECKING
 from dotenv import load_dotenv
 
 config = context.config
