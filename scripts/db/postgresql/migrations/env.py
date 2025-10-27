@@ -1,13 +1,9 @@
 import os
-from dotenv import load_dotenv
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
 import sqlalchemy as sa
-
 from alembic import context
-
+from dotenv import load_dotenv
 
 config = context.config
 
@@ -16,8 +12,8 @@ fileConfig(config.config_file_name)
 target_metadata = None
 
 # Load environment variables from .env file (for local development)
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-CONFIG_FILENAME = 'connect_to_postgres.env'
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', '..', '..'))
+CONFIG_FILENAME = '.env'
 
 # Load the environment file using the full path
 load_result = load_dotenv(os.path.join(ROOT_DIR, CONFIG_FILENAME), override=True)
@@ -41,7 +37,10 @@ def run_migrations_offline():
     url = get_url()
 
     context.configure(
-        url=url, target_metadata=target_metadata, literal_binds=True, dialect_opts={"paramstyle": "named"}
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"}
     )
 
     # print(context.get_current_revision())
