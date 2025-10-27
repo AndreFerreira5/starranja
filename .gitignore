@@ -55,6 +55,7 @@ instance/
 # FastAPI/Starlette specific (common environment)
 .env
 .env.*.local
+connect_to_postgres.env
 
 # Pytest
 .cache/
@@ -77,4 +78,5 @@ env/
 
 # Logs
 *.log
+
 
