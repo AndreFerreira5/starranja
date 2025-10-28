@@ -117,7 +117,7 @@ This is the core collection, tracking the entire lifecycle of a repair job. It r
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `type` | `String` | Enum: `Part` or `Labor`. |
-| `description` | `String` | e.g., "Óleo 5W-30" or "Mão de obra troca de filtro". |
+| `description` | `String` | e.g., "5W-30 oil" or "Filter change labor". |
 | `reference` | `String` | Part number or internal code (RB03). |
 | `quantity` | `Decimal128` | Units or hours (RB03). |
 | `unitPriceWithoutIVA`| `Decimal128`| Cost per unit/hour (RB03, RF06). |
