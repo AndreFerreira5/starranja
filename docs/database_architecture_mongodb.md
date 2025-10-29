@@ -85,24 +85,25 @@ This is the core collection, tracking the entire lifecycle of a repair job. It r
 
 ### Schema Definition
 
-| Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | `ObjectId` | ✓ | Unique document identifier. |
-| `workOrderNumber` | `String` | ✓ | Sequential, human-readable ID (e.g., "2025-0001"). |
-| `clientId` | `ObjectId` | ✓ | **Reference** to the `_id` in the `clients` collection. |
-| `vehicleId` | `ObjectId` | ✓ | **Reference** to the `_id` in the `vehicles` collection. |
-| `mechanicsIds` | `Array` | | Array of `String` (UUIDs) **referencing** the `users` table in PostgreSQL. |
-| `status` | `String` | ✓ | The current stage of the job. Must be one of: `AwaitingApproval`, `Approved`, `AwaitingParts`, `InProgress`, `Completed`, `Invoiced`, `Delivered`. |
-| `quote` | `Object` | | **Embedded** object for the diagnostic and budget. |
-| `items` | `Array` | | **Embedded** array of objects (see `items` schema below). |
-| `finalTotalPrice...` | `Decimal128` | | Final totals calculated from the `items` array. |
-| `entryDate` | `ISODate` | ✓ | Timestamp: Vehicle check-in. |
-| `diagnosisRegisteredAt`| `ISODate` | | Timestamp: Quote/diagnostic registered. |
-| `quoteApprovedAt` | `ISODate` | | Timestamp: Customer approval (RB06). |
-| `completedAt` | `ISODate` | | Timestamp: Work completed (triggers RB07). |
-| `deliveredAt` | `ISODate` | | Timestamp: Vehicle delivered to customer. |
-| `createdAt` | `ISODate` | ✓ | Timestamp when the document was created. |
-| `updatedAt` | `ISODate` | ✓ | Timestamp of the last update. |
+| Field                   | Type | Required | Description |
+|:------------------------| :--- |:---------| :--- |
+| `_id`                   | `ObjectId` | ✓        | Unique document identifier. |
+| `workOrderNumber`       | `String` | ✓        | Sequential, human-readable ID (e.g., "2025-0001"). |
+| `clientId`              | `ObjectId` | ✓        | **Reference** to the `_id` in the `clients` collection. |
+| `vehicleId`             | `ObjectId` | ✓        | **Reference** to the `_id` in the `vehicles` collection. |
+| `mechanicsIds`          | `Array` |          | Array of `String` (UUIDs) **referencing** the `users` table in PostgreSQL. |
+| `status`                | `String` | ✓        | The current stage of the job. Must be one of: `AwaitingApproval`, `Approved`, `AwaitingParts`, `InProgress`, `Completed`, `Invoiced`, `Delivered`. |
+| `quote`                 | `Object` |          | **Embedded** object for the diagnostic and budget. |
+| `items`                 | `Array` |          | **Embedded** array of objects (see `items` schema below). |
+| `finalTotalPrice...`    | `Decimal128` |          | Final totals calculated from the `items` array. |
+| `entryDate`             | `ISODate` | ✓        | Timestamp: Vehicle check-in. |
+| `diagnosisRegisteredAt` | `ISODate` |          | Timestamp: Quote/diagnostic registered. |
+| `quoteApprovedAt`       | `ISODate` |          | Timestamp: Customer approval (RB06). |
+| `completedAt`           | `ISODate` |          | Timestamp: Work completed (triggers RB07). |
+| `deliveredAt`           | `ISODate` |          | Timestamp: Vehicle delivered to customer. |
+| `createdAt`             | `ISODate` | ✓        | Timestamp when the document was created. |
+| `updatedAt`             | `ISODate` | ✓        | Timestamp of the last update. |
+| **`createdById`**       | **`String (UUID)`** | ✓        | **Reference to the user (PostgreSQL) who created the WO.** |
 
 ### Embedded Schema: `quote`
 
@@ -128,9 +129,11 @@ This is the core collection, tracking the entire lifecycle of a repair job. It r
 
 | Field(s) | Type | Purpose |
 | :--- | :--- | :--- |
-| `{ vehicleId: 1 }` | **Partial, Unique** | **Implements RB02**. `{"status": { "$nin": ["Completed", "Invoiced", "Delivered"] } }` <br> Ensures a vehicle has only ONE active work order. |
+| `{ vehicleId: 1 }` | **Partial, Unique** | **Implements RB02**. `{"status": { "$in": ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress"] } }` <br> Ensures a vehicle has only ONE active work order. |
 | `{ workOrderNumber: 1 }`| **Unique** | Fast lookup by the human-readable number. |
-| `{ status: 1 }` | Simple | Fast queries for the Dashboard (e.g., "all `InProgress` WOs"). |
+| `{ status: 1 }` | Simple | Optimizes simple queries by status (e.g., "all `InProgress` WOs"). |
+| `{ entryDate: -1 }` | Simple | Accelerates sorting by entry date (RF10). |
+| `{ status: 1, entryDate: -1 }` | **Compound** | **Optimizes complex Dashboard queries (RF10)**, filtering by `status` (e.g., 'InProgress') and sorting by date (newest/oldest). |
 | `{ clientId: 1 }` | Simple | Fast lookup for a client's full repair history. |
 | `{ mechanicsIds: 1 }` | Simple | Fast lookup for a mechanic's assigned tasks (Dashboard). |
 
@@ -143,21 +146,22 @@ Stores finalized, immutable billing records. This collection **"snapshots"** (co
 ### Schema Definition
 
 | Field | Type | Required | Description |
-| :--- | :--- | :--- | :--- |
-| `_id` | `ObjectId` | ✓ | Unique document identifier. |
-| `invoiceNumber` | `String` | ✓ | Sequential, official invoice number (e.g., "FT 2025/1"). |
-| `invoiceDate` | `ISODate` | ✓ | Date the invoice was officially emitted. |
-| `status` | `String` | ✓ | Enum: `Emitted`, `Paid`, `Canceled`. |
-| `workOrderId` | `ObjectId` | ✓ | **Reference** to the source `workOrders._id`. |
-| `clientId` | `ObjectId` | ✓ | **Reference** to the `clients._id`. |
-| `clientDetails` | `Object` | ✓ | **Snapshot** of client data at the time of invoicing. |
-| `vehicleDetails` | `Object` | ✓ | **Snapshot** of vehicle data at the time of invoicing. |
-| `items` | `Array` | ✓ | **Snapshot** (deep copy) of the `items` array from the work order. |
-| `totalWithoutIVA` | `Decimal128` | ✓ | **Snapshot** of the final total. |
-| `totalIVA` | `Decimal128` | ✓ | **Snapshot** of the final total. |
-| `totalWithIVA` | `Decimal128` | ✓ | **Snapshot** of the final total. |
-| `createdAt` | `ISODate` | ✓ | Timestamp when the invoice was created. |
-| `updatedAt` | `ISODate` | ✓ | Timestamp (e.g., when moving `status` to `Paid`). |
+| :--- | :--- |:---------| :--- |
+| `_id` | `ObjectId` | ✓        | Unique document identifier. |
+| `invoiceNumber` | `String` | ✓        | Sequential, official invoice number (e.g., "FT 2025/1"). |
+| `invoiceDate` | `ISODate` | ✓        | Date the invoice was officially emitted. |
+| `status` | `String` | ✓        | Enum: `Emitted`, `Paid`, `Canceled`. |
+| `workOrderId` | `ObjectId` | ✓        | **Reference** to the source `workOrders._id`. |
+| `clientId` | `ObjectId` | ✓        | **Reference** to the `clients._id`. |
+| `clientDetails` | `Object` | ✓        | **Snapshot** of client data at the time of invoicing. |
+| `vehicleDetails` | `Object` | ✓        | **Snapshot** of vehicle data at the time of invoicing. |
+| `items` | `Array` | ✓        | **Snapshot** (deep copy) of the `items` array from the work order. |
+| `totalWithoutIVA` | `Decimal128` | ✓        | **Snapshot** of the final total. |
+| `totalIVA` | `Decimal128` | ✓        | **Snapshot** of the final total. |
+| `totalWithIVA` | `Decimal128` | ✓        | **Snapshot** of the final total. |
+| `createdAt` | `ISODate` | ✓        | Timestamp when the invoice was created. |
+| `updatedAt` | `ISODate` | ✓        | Timestamp (e.g., when moving `status` to `Paid`). |
+| **`emittedById`** | **`String (UUID)`** | ✓        | **Reference to the user (PostgreSQL) who emitted the invoice.** |
 
 ### Business Logic (Application Layer)
 
@@ -171,3 +175,15 @@ Stores finalized, immutable billing records. This collection **"snapshots"** (co
 | `{ workOrderId: 1 }` | **Unique** | Ensures a work order can only be invoiced once. |
 | `{ clientId: 1 }` | Simple | Fast lookup for all invoices for a specific client. |
 | `{ invoiceDate: -1 }` | Simple | Fast sorting for financial reports (newest first). |
+
+---
+
+## 7. PostgreSQL User Integration (The "Hydration" Contract)**
+
+**This section defines the "contract" for handling user data, as specified in RNF02.**
+
+This MongoDB database **does not** store any user details (like names, emails, or roles) to maintain a single source of truth and respect the separation of concerns. User management is handled entirely by the separate PostgreSQL database and Authentication service.
+
+* **Strategy:** Fields such as `workOrders.mechanicsIds`, `workOrders.createdById`, and `invoices.emittedById` store the user's `UUID` (as a `String` type) from the PostgreSQL `users` table.
+
+* **The "Contract":** The backend service is responsible for **"data hydration"**. When a user's name is needed (e.g., displaying the mechanic's name on a work order in the UI), the StArranja service **must** query the User/Auth API using the stored UUID to fetch the user's current details. The MongoDB database *only* stores the reference ID.
