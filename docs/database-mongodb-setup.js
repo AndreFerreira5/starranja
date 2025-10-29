@@ -1,0 +1,359 @@
+/*
+ * =================================================================
+ * StArranja Database Setup Script
+ * =================================================================
+ * This script creates the database, collections, validation schemas,
+ * and all performance and business rule indexes.
+ *
+ * This script is executed with the command:
+ * mongosh "mongodb-url/starranja" --file database-mongo-setup.js
+ */
+
+
+print("Starting the StArranja database setup");
+
+/*
+ * =================================================================
+ * Collection: clients
+ * =================================================================
+ */
+db.createCollection("clients");
+
+db.runCommand({
+  collMod: "clients",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["name", "nif", "phone", "createdAt", "updatedAt"],
+      properties: {
+        name: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        nif: {
+          bsonType: "string",
+          pattern: "^[0-9]{9}$",
+          description: "must be a string 9 digits long and is required"
+        },
+        phone: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        email: {
+          bsonType: "string",
+          pattern: "^.+@.+\\..+$",
+          description: "must be a valid email address"
+        },
+        address: {
+          bsonType: "object",
+          properties: {
+            street: { bsonType: "string" },
+            city: { bsonType: "string" },
+            zipCode: { bsonType: "string" }
+          }
+        },
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" }
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+db.clients.createIndex(
+  { nif: 1 },
+  { unique: true }
+);
+db.clients.createIndex(
+  { phone: 1 }
+);
+db.clients.createIndex(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { email: { $exists: true } } }
+);
+
+print("Collection 'clients' created with validation and indexes.");
+
+/*
+ * =================================================================
+ * Collection: vehicles
+ * =================================================================
+ */
+db.createCollection("vehicles");
+
+db.runCommand({
+  collMod: "vehicles",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["clientId", "licensePlate", "brand", "model", "createdAt", "updatedAt"],
+      properties: {
+        clientId: {
+          bsonType: "objectId",
+          description: "must be an ObjectId and is required"
+        },
+        licensePlate: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        brand: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        model: {
+          bsonType: "string",
+          description: "must be a string and is required"
+        },
+        vin: {
+          bsonType: "string",
+          pattern: "^[A-HJ-NPR-Z0-9]{17}$",
+          description: "must be a 17-character VIN string (optional)"
+        },
+        lastKnownKilometers: {
+          bsonType: "int",
+          minimum: 0,
+          description: "must be a non-negative integer (optional)"
+        },
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" }
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+db.vehicles.createIndex(
+  { licensePlate: 1 },
+  { unique: true }
+);
+db.vehicles.createIndex(
+  { clientId: 1 }
+);
+db.vehicles.createIndex(
+  { vin: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { vin: { $exists: true } }
+  }
+);
+
+print("Collection 'vehicles' created with validation and indexes.");
+
+/*
+ * =================================================================
+ * Collection: workOrders
+ * =================================================================
+ */
+db.createCollection("workOrders");
+
+db.runCommand({
+  collMod: "workOrders",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: [
+        "workOrderNumber",
+        "clientId",
+        "vehicleId",
+        "status",
+        "entryDate",
+        "createdAt",
+        "updatedAt",
+        "createdById"
+      ],
+      properties: {
+        workOrderNumber: {
+          bsonType: "string",
+          description: "Sequential work order number is required."
+        },
+        clientId: { bsonType: "objectId" },
+        vehicleId: { bsonType: "objectId" },
+        mechanicsIds: {
+          bsonType: "array",
+          items: { bsonType: "string" }
+        },
+        createdById: {
+          bsonType: "string",
+          description: "User UUID (from PostgreSQL) who created the WO."
+        },
+        status: {
+          enum: ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress", "Completed", "Invoiced", "Delivered"],
+          description: "Must be one of the predefined status values."
+        },
+        quote: {
+          bsonType: "object",
+          required: ["isApproved"],
+          properties: {
+            clientObservations: { bsonType: "string" },
+            diagnostic: { bsonType: "string" },
+            isApproved: { bsonType: "bool" },
+            totalPriceWithoutIVA: { bsonType: "decimal" },
+            totalPriceWithIVA: { bsonType: "decimal" }
+          }
+        },
+        items: {
+          bsonType: "array",
+          items: {
+            bsonType: "object",
+            required: ["type", "description", "quantity", "unitPriceWithoutIVA", "reference"],
+            properties: {
+              type: { enum: ["Part", "Labor"] },
+              description: { bsonType: "string" },
+              reference: { bsonType: "string" },
+              quantity: { bsonType: "decimal", minimum: 0 },
+              unitPriceWithoutIVA: { bsonType: "decimal" },
+              ivaRate: { bsonType: "decimal" },
+              totalPriceWithIVA: { bsonType: "decimal" }
+            }
+          }
+        },
+        finalTotalPriceWithoutIVA: { bsonType: "decimal" },
+        finalTotalIVA: { bsonType: "decimal" },
+        finalTotalPriceWithIVA: { bsonType: "decimal" },
+        // Timestamps
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" },
+        entryDate: { bsonType: "date" },
+        diagnosisRegisteredAt: { bsonType: ["date", "null"] },
+        quoteApprovedAt: { bsonType: ["date", "null"] },
+        executionStartedAt: { bsonType: ["date", "null"] },
+        completedAt: { bsonType: ["date", "null"] },
+        notificationSentAt: { bsonType: ["date", "null"] },
+        deliveredAt: { bsonType: ["date", "null"] }
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+// --- Indexes of workOrders ---
+
+// Index for Business Rule RB02
+db.workOrders.createIndex(
+  { vehicleId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress"] }
+    }
+  }
+);
+// Index for searching by number
+db.workOrders.createIndex(
+  { workOrderNumber: 1 },
+  { unique: true }
+);
+// Index for Dashboard by status
+db.workOrders.createIndex(
+  { status: 1 }
+);
+// Index for Dashboard by entry date
+db.workOrders.createIndex(
+  { entryDate: -1 }
+);
+// Composite Index for Dashboard (status + data)
+db.workOrders.createIndex(
+  { status: 1, entryDate: -1 }
+);
+// Index for customer history
+db.workOrders.createIndex(
+  { clientId: 1 }
+);
+// Index for Mechanics Dashboard
+db.workOrders.createIndex(
+  { mechanicsIds: 1 }
+);
+
+print("Collection 'workOrders' created with validation and all indexes.");
+
+/*
+ * =================================================================
+ * Collection: invoices
+ * =================================================================
+ */
+db.createCollection("invoices");
+
+db.runCommand({
+  collMod: "invoices",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: [
+        "invoiceNumber",
+        "invoiceDate",
+        "status",
+        "workOrderId",
+        "clientId",
+        "clientDetails",
+        "vehicleDetails",
+        "items",
+        "totalWithIVA",
+        "createdAt",
+        "updatedAt",
+        "emittedById"
+      ],
+      properties: {
+        invoiceNumber: { bsonType: "string" },
+        invoiceDate: { bsonType: "date" },
+        status: { enum: ["Emitted", "Paid", "Canceled"] },
+        workOrderId: { bsonType: "objectId" },
+        clientId: { bsonType: "objectId" },
+        emittedById: {
+          bsonType: "string",
+          description: "User UUID (from PostgreSQL) who emitted the invoice."
+        },
+        clientDetails: {
+          bsonType: "object",
+          required: ["name", "nif", "address"],
+          properties: {
+            name: { bsonType: "string" },
+            nif: { bsonType: "string" },
+            address: { bsonType: "object" }
+          }
+        },
+        vehicleDetails: {
+          bsonType: "object",
+          required: ["licensePlate"],
+          properties: {
+            licensePlate: { bsonType: "string" },
+            brand: { bsonType: "string" },
+            model: { bsonType: "string" }
+          }
+        },
+        items: {
+          bsonType: "array",
+          minItems: 1,
+          items: {
+            bsonType: "object",
+            required: ["description", "quantity", "unitPriceWithoutIVA"]
+          }
+        },
+        totalWithoutIVA: { bsonType: "decimal" },
+        totalIVA: { bsonType: "decimal" },
+        totalWithIVA: { bsonType: "decimal" },
+        createdAt: { bsonType: "date" },
+        updatedAt: { bsonType: "date" }
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+db.invoices.createIndex(
+  { invoiceNumber: 1 },
+  { unique: true }
+);
+db.invoices.createIndex(
+  { workOrderId: 1 },
+  { unique: true }
+);
+db.invoices.createIndex(
+  { clientId: 1 }
+);
+db.invoices.createIndex(
+  { invoiceDate: -1 }
+);
+
+print("Collection 'invoices' created with validation and indexes.");
+
+print("\n--- StArranja Database Setup Complete ---");
