@@ -17,7 +17,7 @@ The model is **hybrid**, using a combination of **Referencing** (for data consis
 
 ## 2. Visual Schema Diagram
 
-![StArranja Database (MongoDB) Schema](./images/mongodb-desing.png)
+![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v2.png)
 
 ---
 
@@ -85,25 +85,26 @@ This is the core collection, tracking the entire lifecycle of a repair job. It r
 
 ### Schema Definition
 
-| Field                   | Type | Required | Description |
-|:------------------------| :--- |:---------| :--- |
-| `_id`                   | `ObjectId` | ✓        | Unique document identifier. |
-| `workOrderNumber`       | `String` | ✓        | Sequential, human-readable ID (e.g., "2025-0001"). |
-| `clientId`              | `ObjectId` | ✓        | **Reference** to the `_id` in the `clients` collection. |
-| `vehicleId`             | `ObjectId` | ✓        | **Reference** to the `_id` in the `vehicles` collection. |
-| `mechanicsIds`          | `Array` |          | Array of `String` (UUIDs) **referencing** the `users` table in PostgreSQL. |
-| `status`                | `String` | ✓        | The current stage of the job. Must be one of: `AwaitingApproval`, `Approved`, `AwaitingParts`, `InProgress`, `Completed`, `Invoiced`, `Delivered`. |
-| `quote`                 | `Object` |          | **Embedded** object for the diagnostic and budget. |
-| `items`                 | `Array` |          | **Embedded** array of objects (see `items` schema below). |
-| `finalTotalPrice...`    | `Decimal128` |          | Final totals calculated from the `items` array. |
-| `entryDate`             | `ISODate` | ✓        | Timestamp: Vehicle check-in. |
-| `diagnosisRegisteredAt` | `ISODate` |          | Timestamp: Quote/diagnostic registered. |
-| `quoteApprovedAt`       | `ISODate` |          | Timestamp: Customer approval (RB06). |
-| `completedAt`           | `ISODate` |          | Timestamp: Work completed (triggers RB07). |
-| `deliveredAt`           | `ISODate` |          | Timestamp: Vehicle delivered to customer. |
-| `createdAt`             | `ISODate` | ✓        | Timestamp when the document was created. |
-| `updatedAt`             | `ISODate` | ✓        | Timestamp of the last update. |
-| **`createdById`**       | **`String (UUID)`** | ✓        | **Reference to the user (PostgreSQL) who created the WO.** |
+| Field                   | Type                | Required | Description                                                                                                                                        |
+|:------------------------|:--------------------|:---------|:---------------------------------------------------------------------------------------------------------------------------------------------------|
+| `_id`                   | `ObjectId`          | ✓        | Unique document identifier.                                                                                                                        |
+| `workOrderNumber`       | `String`            | ✓        | Sequential, human-readable ID (e.g., "2025-0001").                                                                                                 |
+| `clientId`              | `ObjectId`          | ✓        | **Reference** to the `_id` in the `clients` collection.                                                                                            |
+| `vehicleId`             | `ObjectId`          | ✓        | **Reference** to the `_id` in the `vehicles` collection.                                                                                           |
+| `mechanicsIds`          | `Array`             |          | Array of `String` (UUIDs) **referencing** the `users` table in PostgreSQL.                                                                         |
+| `status`                | `String`            | ✓        | The current stage of the job. Must be one of: `AwaitingApproval`, `Approved`, `AwaitingParts`, `InProgress`, `Completed`, `Invoiced`, `Delivered`. |
+| `isActive`              | `Boolean`           | ✓        | Controls RB02. `true` if WO is not in a final state (e.g. 'Completed', 'Invoiced'). Must be managed by the application.                            |
+| `quote`                 | `Object`            |          | **Embedded** object for the diagnostic and budget.                                                                                                 |
+| `items`                 | `Array`             |          | **Embedded** array of objects (see `items` schema below).                                                                                          |
+| `finalTotalPrice...`    | `Decimal128`        |          | Final totals calculated from the `items` array.                                                                                                    |
+| `entryDate`             | `ISODate`           | ✓        | Timestamp: Vehicle check-in.                                                                                                                       |
+| `diagnosisRegisteredAt` | `ISODate`           |          | Timestamp: Quote/diagnostic registered.                                                                                                            |
+| `quoteApprovedAt`       | `ISODate`           |          | Timestamp: Customer approval (RB06).                                                                                                               |
+| `completedAt`           | `ISODate`           |          | Timestamp: Work completed (triggers RB07).                                                                                                         |
+| `deliveredAt`           | `ISODate`           |          | Timestamp: Vehicle delivered to customer.                                                                                                          |
+| `createdAt`             | `ISODate`           | ✓        | Timestamp when the document was created.                                                                                                           |
+| `updatedAt`             | `ISODate`           | ✓        | Timestamp of the last update.                                                                                                                      |
+| **`createdById`**       | **`String (UUID)`** | ✓        | **Reference to the user (PostgreSQL) who created the WO.**                                                                                         |
 
 ### Embedded Schema: `quote`
 
@@ -129,7 +130,7 @@ This is the core collection, tracking the entire lifecycle of a repair job. It r
 
 | Field(s) | Type | Purpose |
 | :--- | :--- | :--- |
-| `{ vehicleId: 1 }` | **Partial, Unique** | **Implements RB02**. `{"status": { "$in": ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress"] } }` <br> Ensures a vehicle has only ONE active work order. |
+| `{ vehicleId: 1 }` | **Partial, Unique** | **Implements RB02**. `{"isActive": true}` <br> Ensures a vehicle has only ONE active work order. (FerretDB/DocumentDB compatible). |
 | `{ workOrderNumber: 1 }`| **Unique** | Fast lookup by the human-readable number. |
 | `{ status: 1 }` | Simple | Optimizes simple queries by status (e.g., "all `InProgress` WOs"). |
 | `{ entryDate: -1 }` | Simple | Accelerates sorting by entry date (RF10). |

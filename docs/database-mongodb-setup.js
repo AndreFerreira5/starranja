@@ -156,6 +156,7 @@ db.runCommand({
         "clientId",
         "vehicleId",
         "status",
+        "isActive",
         "entryDate",
         "createdAt",
         "updatedAt",
@@ -179,6 +180,10 @@ db.runCommand({
         status: {
           enum: ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress", "Completed", "Invoiced", "Delivered"],
           description: "Must be one of the predefined status values."
+        },
+        isActive: {
+            bsonType: "bool",
+            description: "True if the WO is active (not completed/canceled/invoiced). Controls RB02."
         },
         quote: {
           bsonType: "object",
@@ -234,7 +239,7 @@ db.workOrders.createIndex(
   {
     unique: true,
     partialFilterExpression: {
-      status: { $in: ["Draft", "AwaitingApproval", "Approved", "AwaitingParts", "InProgress"] }
+        isActive: true
     }
   }
 );
