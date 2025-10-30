@@ -1,7 +1,8 @@
 ﻿from datetime import datetime
+
 from beanie import Document, Indexed
-from pydantic import Field, BaseModel, ConfigDict, field_validator, constr
 from bson import ObjectId
+from pydantic import BaseModel, ConfigDict, Field, constr
 
 VIN = constr(min_length=17, max_length=17)
 
@@ -9,9 +10,14 @@ VIN = constr(min_length=17, max_length=17)
 # - This is the main entity model, as it is defined in the db table, it is used
 # - The (Document) is a base class for MongoDB models,
 #   that means the Beanie will map the class to the collection - this is done in the class Settings below
+
+# - Indexed means the field will have an Index for faster queries
+
+# - Field is just for us to keep the model properties named correctly with python (snake_case) and still use the
+#   table fields original name (camelCase)
 class Vehicle(Document):
-    client_id: Indexed(ObjectId) #Indexed means the field will have an Index for faster queries
-    license_plate: Indexed(str, unique=True) = Field(..., alias="licensePlate") # Field is just for us to keep the model properties named correctly with python (snake_case) and still use the table fields original name (camelCase)
+    client_id: Indexed(ObjectId)
+    license_plate: Indexed(str, unique=True) = Field(..., alias="licensePlate")
     brand: str
     model: str
     kilometers: int = Field(ge=0)
