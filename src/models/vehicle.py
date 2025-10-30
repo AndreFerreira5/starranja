@@ -19,7 +19,7 @@ class Vehicle(Document):
     client_id: Indexed(ObjectId)
     license_plate: Indexed(str, unique=True) = Field(..., alias="licensePlate")
     brand: str
-    model: str
+    model: str = Field(..., min_length=1)
     kilometers: int = Field(ge=0)
     vin: Indexed(VIN, unique=True)
     created_at: datetime = Field(default_factory=datetime.utcnow, alias="createdAt")
