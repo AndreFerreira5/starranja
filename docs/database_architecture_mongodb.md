@@ -17,7 +17,7 @@ The model is **hybrid**, using a combination of **Referencing** (for data consis
 
 ## 2. Visual Schema Diagram
 
-![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v2.png)
+![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v3.png)
 
 ---
 
