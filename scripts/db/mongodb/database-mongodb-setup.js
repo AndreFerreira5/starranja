@@ -52,8 +52,8 @@ db.runCommand({
             zipCode: { bsonType: "string" }
           }
         },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
+        createdAt: { bsonType: "ISODate" },
+        updatedAt: { bsonType: "ISODate" }
       }
     }
   },
@@ -114,8 +114,8 @@ db.runCommand({
           minimum: 0,
           description: "must be a non-negative integer (optional)"
         },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
+        createdAt: { bsonType: "ISODate" },
+        updatedAt: { bsonType: "ISODate" }
       }
     }
   },
@@ -192,8 +192,8 @@ db.runCommand({
             clientObservations: { bsonType: "string" },
             diagnostic: { bsonType: "string" },
             isApproved: { bsonType: "bool" },
-            totalPriceWithoutIVA: { bsonType: "decimal" },
-            totalPriceWithIVA: { bsonType: "decimal" }
+            totalPriceWithoutIVA: { bsonType: "decimal128" },
+            totalPriceWithIVA: { bsonType: "decimal128" }
           }
         },
         items: {
@@ -205,26 +205,26 @@ db.runCommand({
               type: { enum: ["Part", "Labor"] },
               description: { bsonType: "string" },
               reference: { bsonType: "string" },
-              quantity: { bsonType: "decimal", minimum: 0 },
-              unitPriceWithoutIVA: { bsonType: "decimal" },
-              ivaRate: { bsonType: "decimal" },
-              totalPriceWithIVA: { bsonType: "decimal" }
+              quantity: { bsonType: "decimal128", minimum: 0 },
+              unitPriceWithoutIVA: { bsonType: "decimal128" },
+              ivaRate: { bsonType: "decimal128" },
+              totalPriceWithIVA: { bsonType: "decimal128" }
             }
           }
         },
-        finalTotalPriceWithoutIVA: { bsonType: "decimal" },
-        finalTotalIVA: { bsonType: "decimal" },
-        finalTotalPriceWithIVA: { bsonType: "decimal" },
+        finalTotalPriceWithoutIVA: { bsonType: "decimal128" },
+        finalTotalIVA: { bsonType: "decimal128" },
+        finalTotalPriceWithIVA: { bsonType: "decimal128" },
         // Timestamps
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" },
-        entryDate: { bsonType: "date" },
-        diagnosisRegisteredAt: { bsonType: ["date", "null"] },
-        quoteApprovedAt: { bsonType: ["date", "null"] },
-        executionStartedAt: { bsonType: ["date", "null"] },
-        completedAt: { bsonType: ["date", "null"] },
-        notificationSentAt: { bsonType: ["date", "null"] },
-        deliveredAt: { bsonType: ["date", "null"] }
+        createdAt: { bsonType: "ISODate" },
+        updatedAt: { bsonType: "ISODate" },
+        entryDate: { bsonType: "ISODate" },
+        diagnosisRegisteredAt: { bsonType: ["ISODate", "null"] },
+        quoteApprovedAt: { bsonType: ["ISODate", "null"] },
+        executionStartedAt: { bsonType: ["ISODate", "null"] },
+        completedAt: { bsonType: ["ISODate", "null"] },
+        notificationSentAt: { bsonType: ["ISODate", "null"] },
+        deliveredAt: { bsonType: ["ISODate", "null"] }
       }
     }
   },
@@ -299,7 +299,7 @@ db.runCommand({
       ],
       properties: {
         invoiceNumber: { bsonType: "string" },
-        invoiceDate: { bsonType: "date" },
+        invoiceDate: { bsonType: "ISODate" },
         status: { enum: ["Emitted", "Paid", "Canceled"] },
         workOrderId: { bsonType: "objectId" },
         clientId: { bsonType: "objectId" },
@@ -333,11 +333,11 @@ db.runCommand({
             required: ["description", "quantity", "unitPriceWithoutIVA"]
           }
         },
-        totalWithoutIVA: { bsonType: "decimal" },
-        totalIVA: { bsonType: "decimal" },
-        totalWithIVA: { bsonType: "decimal" },
-        createdAt: { bsonType: "date" },
-        updatedAt: { bsonType: "date" }
+        totalWithoutIVA: { bsonType: "decimal128" },
+        totalIVA: { bsonType: "decimal128" },
+        totalWithIVA: { bsonType: "decimal128" },
+        createdAt: { bsonType: "ISODate" },
+        updatedAt: { bsonType: "ISODate" }
       }
     }
   },
@@ -360,5 +360,58 @@ db.invoices.createIndex(
 );
 
 print("Collection 'invoices' created with validation and indexes.");
+
+/*
+ * =================================================================
+ * Collection: appointments
+ * =================================================================
+ */
+
+db.createCollection("appointments");
+
+db.runCommand({
+  collMod: "appointments",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["clientId", "appointmentDate", "status", "createdAt", "updatedAt"],
+      properties: {
+        clientId: {
+          bsonType: "objectId",
+          description: "Reference to the client who made the appointment"
+        },
+        appointmentDate: {
+          bsonType: "ISODate",
+          description: "Date and time of the booking"
+        },
+        vehicleId: {
+          bsonType: "objectId",
+          description: "Optional reference to the vehicle"
+        },
+        workOrderId: {
+          bsonType: "objectId",
+          description: "Optional reference to a work order (e.g., follow-up)"
+        },
+        notes: {
+          bsonType: "string",
+          description: "Client notes or service to be performed"
+        },
+        status: {
+          enum: ["Scheduled", "Completed", "Canceled"],
+          description: "Status of the appointment"
+        },
+        createdAt: { bsonType: "ISODate" },
+        updatedAt: { bsonType: "ISODate" }
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+db.appointments.createIndex({ appointmentDate: -1 });
+db.appointments.createIndex({ clientId: 1 });
+db.appointments.createIndex({ status: 1, appointmentDate: 1 });
+
+print("Collection 'appointments' created successfully.");
 
 print("\n--- StArranja Database Setup Complete ---");
