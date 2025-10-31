@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     # ========================================================================
 
     PASETO_SECRET_KEY: str = Field(
-        ...,  # Required field
+        default="53d629200ea4d0a566db608a45d25f838331b8f781fe290d4bc4f2c9b7d127eb",
         description=(
             "PASETO symmetric key (must be exactly 64 hex characters / 32 bytes)"
         ),
