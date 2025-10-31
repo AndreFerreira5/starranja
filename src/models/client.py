@@ -2,13 +2,13 @@
 
 from typing import Optional
 from beanie import Document, Indexed
-from pydantic import BaseModel, ConfigDict, Field, EmailStr, constr
+from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 # ---- Nested type ----
 class Address(BaseModel):
-    street: str = Field(..., alias="street")
-    city: str = Field(..., alias="city")
-    zip_code: str = Field(..., alias="zipCode")
+    street: Optional[str] = Field(None, alias="street")
+    city: Optional[str] = Field(None, alias="city")
+    zip_code: Optional[str] = Field(None, alias="zipCode")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -19,8 +19,9 @@ class Client(Document):
     name: str = Field(...)
     nif: Indexed(str, unique=True) = Field(...)
     phone: Indexed(str) = Field(...)
-    email: Indexed(EmailStr, unique=True) = Field(...)
-    address: Address = Field(...)
+
+    email: Optional[EmailStr] = Field(None)
+    address: Optional[Address] = Field(None)
 
     created_at: datetime = Field(default_factory=datetime.utcnow, alias="createdAt")
     updated_at: datetime = Field(default_factory=datetime.utcnow, alias="updatedAt")
@@ -52,8 +53,10 @@ class ClientBase(BaseModel):
     name: str
     nif: str
     phone: str
-    email: EmailStr
-    address: AddressCreate
+
+    # Optional on create
+    email: Optional[EmailStr] = None
+    address: Optional[AddressCreate] = None
 
     model_config = ConfigDict(populate_by_name=True)
 
