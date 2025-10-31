@@ -1,6 +1,6 @@
 """
 Centralizes configuration parameters for the application,
-including security-critical settings for password hashing.
+including security settings for hashing and token management.
 """
 
 from pydantic import Field, field_validator
@@ -20,7 +20,10 @@ class Settings(BaseSettings):
     # Database settings
     DATABASE_URL: str | None = None
 
+    # ========================================================================
     # Password Hashing Configuration
+    # ========================================================================
+
     ARGON2_TIME_COST: int = Field(
         default=3, description="Number of iterations (recommended: 2-4 for Argon2id)"
     )
@@ -44,12 +47,36 @@ class Settings(BaseSettings):
 
     # Password Policy
     MIN_PASSWORD_LENGTH: int = Field(default=8, description="Minimum password length")
-
     MAX_PASSWORD_LENGTH: int = Field(default=128, description="Maximum password length")
+
+    # ========================================================================
+    # Token Configuration (PASETO)
+    # ========================================================================
+
+    PASETO_SECRET_KEY: str = Field(
+        ...,  # Required field
+        description=(
+            "PASETO symmetric key (must be exactly 64 hex characters / 32 bytes)"
+        ),
+    )
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=15,
+        description="Access token expiration time in minutes (default: 15 minutes)",
+    )
+
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(
+        default=7,
+        description="Refresh token expiration time in days (default: 7 days)",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )
+
+    # ========================================================================
+    # Password Hashing Validators
+    # ========================================================================
 
     @field_validator("ARGON2_TIME_COST")
     @classmethod
@@ -83,6 +110,74 @@ class Settings(BaseSettings):
             raise ValueError("Minimum password length should be at least 8")
         return v
 
+    # ========================================================================
+    # Token Configuration Validators
+    # ========================================================================
+
+    @field_validator("PASETO_SECRET_KEY")
+    @classmethod
+    def validate_paseto_key(cls, v: str) -> str:
+        """
+        Validate PASETO secret key format and length.
+
+        Must be exactly 64 hexadecimal characters (32 bytes).
+        """
+        if not isinstance(v, str):
+            raise ValueError("PASETO_SECRET_KEY must be a string")
+
+        # Remove whitespace
+        v = v.strip()
+
+        # Check length (64 hex chars = 32 bytes)
+        if len(v) != 64:
+            raise ValueError(
+                "PASETO_SECRET_KEY must be exactly 64 hexadecimal characters "
+                "(32 bytes). Use: python -c 'import secrets; "
+                "print(secrets.token_hex(32))' to generate one"
+            )
+
+        # Validate hex format
+        try:
+            bytes.fromhex(v)
+        except ValueError as e:
+            raise ValueError(
+                "PASETO_SECRET_KEY must contain only hexadecimal characters (0-9, a-f)"
+            ) from e
+
+        return v
+
+    @field_validator("ACCESS_TOKEN_EXPIRE_MINUTES")
+    @classmethod
+    def validate_access_token_expiration(cls, v: int) -> int:
+        """
+        Validate access token expiration time.
+
+        Should be between 1 minute and 24 hours (1440 minutes).
+        """
+        if v < 1:
+            raise ValueError("ACCESS_TOKEN_EXPIRE_MINUTES must be at least 1")
+        if v > 1440:  # 24 hours
+            raise ValueError(
+                "ACCESS_TOKEN_EXPIRE_MINUTES should not exceed 1440 (24 hours)"
+            )
+        return v
+
+    @field_validator("REFRESH_TOKEN_EXPIRE_DAYS")
+    @classmethod
+    def validate_refresh_token_expiration(cls, v: int) -> int:
+        """
+        Validate refresh token expiration time.
+
+        Should be between 1 day and 90 days.
+        """
+        if v < 1:
+            raise ValueError("REFRESH_TOKEN_EXPIRE_DAYS must be at least 1")
+        if v > 90:
+            raise ValueError(
+                "REFRESH_TOKEN_EXPIRE_DAYS should not exceed 90 days for security"
+            )
+        return v
+
 
 # Global settings instance
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]
