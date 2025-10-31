@@ -27,7 +27,7 @@ services:
     ports:
       - 5433:5432
     volumes:
-      - ./auth-data:/var/lib/postgresql/data
+      - ./auth-data:/var/lib/postgresql
 
 networks:
   default:
