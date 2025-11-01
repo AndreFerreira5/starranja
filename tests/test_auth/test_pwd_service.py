@@ -7,13 +7,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 from argon2.exceptions import HashingError, InvalidHashError, VerificationError
 
-from src.config import settings
 from src.authentication.exceptions import (
     InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
 )
-from src.authentication.services.password import PasswordService, check_password, hash_password
+from src.authentication.services.password import (
+    PasswordService,
+    check_password,
+    hash_password,
+)
+from src.config import settings
 
 
 @pytest.fixture(autouse=True)

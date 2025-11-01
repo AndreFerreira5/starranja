@@ -11,7 +11,6 @@ from unittest.mock import patch
 import pyseto
 import pytest
 
-from src.config import settings
 from src.authentication.exceptions import (
     InvalidTokenError,
     TokenExpiredError,
@@ -19,6 +18,7 @@ from src.authentication.exceptions import (
     TokenValidationError,
 )
 from src.authentication.services.token import TokenService, generate_token, verify_token
+from src.config import settings
 
 
 @pytest.fixture

@@ -13,12 +13,12 @@ from argon2.exceptions import (
     VerifyMismatchError,
 )
 
-from src.config import settings
 from src.authentication.exceptions import (
     InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
 )
+from src.config import settings
 
 # Configure logging - note: never log passwords or hashes in production
 logger = logging.getLogger(__name__)

@@ -11,13 +11,13 @@ from typing import Any, cast
 import pyseto
 from pyseto import DecryptError, VerifyError
 
-from src.config import settings
 from src.authentication.exceptions import (
     InvalidTokenError,
     TokenExpiredError,
     TokenGenerationError,
     TokenValidationError,
 )
+from src.config import settings
 
 logger = logging.getLogger(__name__)
 
