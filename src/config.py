@@ -3,27 +3,11 @@ Centralizes configuration parameters for the application,
 including security settings for hashing and token management.
 """
 
-from pydantic import Field, field_validator
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    """
-    Application settings with validation.
-    """
-
-    # Application settings
-    APP_NAME: str = "StArranja"
-    DEBUG: bool = False
-    ENVIRONMENT: str = "production"
-
-    # Database settings
-    DATABASE_URL: str | None = None
-
-    # ========================================================================
-    # Password Hashing Configuration
-    # ========================================================================
-
+class AuthSettings(BaseModel):
     ARGON2_TIME_COST: int = Field(
         default=3, description="Number of iterations (recommended: 2-4 for Argon2id)"
     )
@@ -69,14 +53,6 @@ class Settings(BaseSettings):
         default=7,
         description="Refresh token expiration time in days (default: 7 days)",
     )
-
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
-    )
-
-    # ========================================================================
-    # Password Hashing Validators
-    # ========================================================================
 
     @field_validator("ARGON2_TIME_COST")
     @classmethod
@@ -179,5 +155,23 @@ class Settings(BaseSettings):
         return v
 
 
-# Global settings instance
-settings = Settings()  # type: ignore[call-arg]
+class DatabaseSettings(BaseModel):
+    # Database settings
+    DATABASE_URL: str | None = None
+
+
+class Settings(BaseSettings):
+    # Application settings
+    APP_NAME: str = "StArranja"
+    DEBUG: bool = False
+    ENVIRONMENT: str = "production"
+
+    auth: AuthSettings = Field(default_factory=AuthSettings)
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
+    )
+
+
+settings = Settings()

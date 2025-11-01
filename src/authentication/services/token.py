@@ -11,8 +11,8 @@ from typing import Any, cast
 import pyseto
 from pyseto import DecryptError, VerifyError
 
-from authentication.config import settings
-from authentication.exceptions import (
+from src.config import settings
+from src.authentication.exceptions import (
     InvalidTokenError,
     TokenExpiredError,
     TokenGenerationError,
@@ -57,7 +57,7 @@ class TokenService:
             TokenGenerationError: If key initialization fails
         """
         try:
-            key_material = settings.PASETO_SECRET_KEY
+            key_material = settings.auth.PASETO_SECRET_KEY
 
             # Validate key length (must be 32 bytes for v4.local)
             if len(key_material) != 64:  # 32 bytes = 64 hex characters
@@ -137,7 +137,7 @@ class TokenService:
 
         # Use configured expiration or default
         if expires_in_minutes is None:
-            expires_in_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+            expires_in_minutes = settings.auth.ACCESS_TOKEN_EXPIRE_MINUTES
 
         try:
             # Calculate timestamps with second-level precision

@@ -11,14 +11,14 @@ from unittest.mock import patch
 import pyseto
 import pytest
 
-from authentication.config import settings
-from authentication.exceptions import (
+from src.config import settings
+from src.authentication.exceptions import (
     InvalidTokenError,
     TokenExpiredError,
     TokenGenerationError,
     TokenValidationError,
 )
-from authentication.token_service import TokenService, generate_token, verify_token
+from src.authentication.services.token import TokenService, generate_token, verify_token
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ class TestTokenServiceInitialization:
     def test_key_initialization_with_invalid_length(self):
         """Test that invalid key length raises error."""
         TokenService._instance = None
-        with patch("authentication.config.settings.PASETO_SECRET_KEY", "tooshort"):
+        with patch("src.config.settings.auth.PASETO_SECRET_KEY", "tooshort"):
             with pytest.raises(TokenGenerationError) as exc_info:
                 TokenService()
             assert "32 bytes" in str(exc_info.value)
@@ -75,7 +75,7 @@ class TestTokenServiceInitialization:
         TokenService._instance = None
         # 64 chars but not valid hex
         invalid_key = "z" * 64
-        with patch("authentication.config.settings.PASETO_SECRET_KEY", invalid_key):
+        with patch("src.config.settings.auth.PASETO_SECRET_KEY", invalid_key):
             with pytest.raises(TokenGenerationError):
                 TokenService()
 
@@ -136,7 +136,7 @@ class TestTokenGeneration:
         iat_time = datetime.fromisoformat(payload["iat"])
         delta = exp_time - iat_time
 
-        expected_minutes = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        expected_minutes = settings.auth.ACCESS_TOKEN_EXPIRE_MINUTES
         assert abs(delta.total_seconds() - (expected_minutes * 60)) < 1
 
     def test_generate_token_payload_structure(self, token_service):

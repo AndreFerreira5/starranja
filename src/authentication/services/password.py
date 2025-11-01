@@ -13,8 +13,8 @@ from argon2.exceptions import (
     VerifyMismatchError,
 )
 
-from authentication.config import settings
-from authentication.exceptions import (
+from src.config import settings
+from src.authentication.exceptions import (
     InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
@@ -56,11 +56,11 @@ class PasswordService:
         """
         try:
             self._hasher = PasswordHasher(
-                time_cost=settings.ARGON2_TIME_COST,
-                memory_cost=settings.ARGON2_MEMORY_COST,
-                parallelism=settings.ARGON2_PARALLELISM,
-                hash_len=settings.ARGON2_HASH_LENGTH,
-                salt_len=settings.ARGON2_SALT_LENGTH,
+                time_cost=settings.auth.ARGON2_TIME_COST,
+                memory_cost=settings.auth.ARGON2_MEMORY_COST,
+                parallelism=settings.auth.ARGON2_PARALLELISM,
+                hash_len=settings.auth.ARGON2_HASH_LENGTH,
+                salt_len=settings.auth.ARGON2_SALT_LENGTH,
                 type=argon2.Type.ID,  # Argon2id variant
             )
             logger.info("PasswordHasher initialized with configured parameters")
@@ -83,15 +83,15 @@ class PasswordService:
         if not isinstance(password, str):
             raise InvalidPasswordError("Password must be a string")
 
-        if len(password) < settings.MIN_PASSWORD_LENGTH:
+        if len(password) < settings.auth.MIN_PASSWORD_LENGTH:
             raise InvalidPasswordError(
-                f"Password must be at least {settings.MIN_PASSWORD_LENGTH} "
+                f"Password must be at least {settings.auth.MIN_PASSWORD_LENGTH} "
                 "characters long"
             )
 
-        if len(password) > settings.MAX_PASSWORD_LENGTH:
+        if len(password) > settings.auth.MAX_PASSWORD_LENGTH:
             raise InvalidPasswordError(
-                f"Password must not exceed {settings.MAX_PASSWORD_LENGTH} characters"
+                f"Password must not exceed {settings.auth.MAX_PASSWORD_LENGTH} characters"
             )
 
         if not password.strip():
