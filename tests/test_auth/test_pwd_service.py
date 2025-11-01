@@ -7,13 +7,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 from argon2.exceptions import HashingError, InvalidHashError, VerificationError
 
-from authentication.config import settings
-from authentication.exceptions import (
+from src.authentication.exceptions import (
     InvalidPasswordError,
     PasswordHashingError,
     PasswordVerificationError,
 )
-from authentication.hashing import PasswordService, check_password, hash_password
+from src.authentication.services.password import (
+    PasswordService,
+    check_password,
+    hash_password,
+)
+from src.config import settings
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +73,7 @@ class TestPasswordService:
 
     def test_hash_password_minimum_length(self, password_service):
         """Test password hashing with minimum valid length."""
-        min_password = "a" * settings.MIN_PASSWORD_LENGTH
+        min_password = "a" * settings.auth.MIN_PASSWORD_LENGTH
         hashed = password_service.hash_password(min_password)
 
         assert isinstance(hashed, str)
@@ -77,7 +81,7 @@ class TestPasswordService:
 
     def test_hash_password_too_short(self, password_service):
         """Test that hashing fails for passwords below minimum length."""
-        short_password = "a" * (settings.MIN_PASSWORD_LENGTH - 1)
+        short_password = "a" * (settings.auth.MIN_PASSWORD_LENGTH - 1)
 
         with pytest.raises(InvalidPasswordError) as exc_info:
             password_service.hash_password(short_password)
@@ -86,7 +90,7 @@ class TestPasswordService:
 
     def test_hash_password_too_long(self, password_service):
         """Test that hashing fails for excessively long passwords."""
-        long_password = "a" * (settings.MAX_PASSWORD_LENGTH + 1)
+        long_password = "a" * (settings.auth.MAX_PASSWORD_LENGTH + 1)
 
         with pytest.raises(InvalidPasswordError) as exc_info:
             password_service.hash_password(long_password)
@@ -98,20 +102,14 @@ class TestPasswordService:
         with pytest.raises(InvalidPasswordError) as exc_info:
             password_service.hash_password("")
 
-        assert (
-            "empty" in str(exc_info.value).lower()
-            or "at least" in str(exc_info.value).lower()
-        )
+        assert "empty" in str(exc_info.value).lower() or "at least" in str(exc_info.value).lower()
 
     def test_hash_password_whitespace_only(self, password_service):
         """Test that hashing fails for whitespace-only passwords."""
         with pytest.raises(InvalidPasswordError) as exc_info:
             password_service.hash_password("        ")
 
-        assert (
-            "empty" in str(exc_info.value).lower()
-            or "whitespace" in str(exc_info.value).lower()
-        )
+        assert "empty" in str(exc_info.value).lower() or "whitespace" in str(exc_info.value).lower()
 
     def test_hash_password_non_string(self, password_service):
         """Test that hashing fails for non-string inputs."""
@@ -134,15 +132,13 @@ class TestPasswordService:
         ]
 
         for pwd in special_passwords:
-            if len(pwd) >= settings.MIN_PASSWORD_LENGTH:
+            if len(pwd) >= settings.auth.MIN_PASSWORD_LENGTH:
                 hashed = password_service.hash_password(pwd)
                 assert isinstance(hashed, str)
                 assert hashed.startswith("$argon2id$")
 
-    @patch("authentication.hashing.PasswordHasher")
-    def test_hash_password_hashing_error(
-        self, mock_hasher_class, password_service, valid_password
-    ):
+    @patch("authentication.services.password.PasswordHasher")
+    def test_hash_password_hashing_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling when Argon2 hashing fails."""
         mock_hasher = MagicMock()
         mock_hasher.hash.side_effect = HashingError("Hashing failed")
@@ -211,10 +207,8 @@ class TestPasswordService:
         with pytest.raises(InvalidPasswordError):
             password_service.check_password(hashed, None)
 
-    @patch("authentication.hashing.PasswordHasher")
-    def test_check_password_verification_error(
-        self, mock_hasher_class, password_service, valid_password
-    ):
+    @patch("authentication.services.password.PasswordHasher")
+    def test_check_password_verification_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling when Argon2 verification fails."""
         mock_hasher = MagicMock()
         mock_hasher.verify.side_effect = VerificationError("Verification failed")
@@ -225,10 +219,8 @@ class TestPasswordService:
 
         assert "system error" in str(exc_info.value).lower()
 
-    @patch("authentication.hashing.PasswordHasher")
-    def test_check_password_invalid_hash_error(
-        self, mock_hasher_class, password_service, valid_password
-    ):
+    @patch("authentication.services.password.PasswordHasher")
+    def test_check_password_invalid_hash_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling for corrupted hash."""
         mock_hasher = MagicMock()
         mock_hasher.verify.side_effect = InvalidHashError("Invalid hash")
@@ -237,10 +229,7 @@ class TestPasswordService:
         with pytest.raises(PasswordVerificationError) as exc_info:
             password_service.check_password("corrupted_hash", valid_password)
 
-        assert (
-            "invalid" in str(exc_info.value).lower()
-            or "corrupted" in str(exc_info.value).lower()
-        )
+        assert "invalid" in str(exc_info.value).lower() or "corrupted" in str(exc_info.value).lower()
 
     # ==================== Rehashing Tests ====================
 
@@ -252,10 +241,8 @@ class TestPasswordService:
         # With current parameters, should not need rehashing
         assert needs_rehash is False
 
-    @patch("authentication.hashing.PasswordHasher")
-    def test_check_needs_rehash_updated_parameters(
-        self, mock_hasher_class, password_service, valid_password
-    ):
+    @patch("authentication.services.password.PasswordHasher")
+    def test_check_needs_rehash_updated_parameters(self, mock_hasher_class, password_service, valid_password):
         """Test that old hashes are detected as needing rehash."""
         mock_hasher = MagicMock()
         mock_hasher.check_needs_rehash.return_value = True
@@ -272,9 +259,7 @@ class TestPasswordService:
 
     # ==================== Verify and Update Tests ====================
 
-    def test_verify_and_update_correct_no_rehash(
-        self, password_service, valid_password
-    ):
+    def test_verify_and_update_correct_no_rehash(self, password_service, valid_password):
         """Test verify_and_update with correct password and no rehashing needed."""
         hashed = password_service.hash_password(valid_password)
         is_valid, new_hash = password_service.verify_and_update(hashed, valid_password)
@@ -282,9 +267,7 @@ class TestPasswordService:
         assert is_valid is True
         assert new_hash is None  # No rehashing needed
 
-    def test_verify_and_update_incorrect_password(
-        self, password_service, valid_password
-    ):
+    def test_verify_and_update_incorrect_password(self, password_service, valid_password):
         """Test verify_and_update with incorrect password."""
         hashed = password_service.hash_password(valid_password)
         is_valid, new_hash = password_service.verify_and_update(hashed, "WrongPassword")
@@ -292,10 +275,8 @@ class TestPasswordService:
         assert is_valid is False
         assert new_hash is None
 
-    @patch("authentication.hashing.PasswordHasher")
-    def test_verify_and_update_with_rehash(
-        self, mock_hasher_class, password_service, valid_password
-    ):
+    @patch("authentication.services.password.PasswordHasher")
+    def test_verify_and_update_with_rehash(self, mock_hasher_class, password_service, valid_password):
         """Test verify_and_update when rehashing is needed."""
         # First create a real hash
         real_service = PasswordService()
@@ -308,9 +289,7 @@ class TestPasswordService:
         mock_hasher.hash.return_value = "$argon2id$new_hash"
         password_service._hasher = mock_hasher
 
-        is_valid, new_hash = password_service.verify_and_update(
-            old_hash, valid_password
-        )
+        is_valid, new_hash = password_service.verify_and_update(old_hash, valid_password)
 
         assert is_valid is True
         assert new_hash is not None
@@ -402,7 +381,7 @@ class TestPasswordService:
         ]
 
         for pwd in unicode_passwords:
-            if len(pwd) >= settings.MIN_PASSWORD_LENGTH:
+            if len(pwd) >= settings.auth.MIN_PASSWORD_LENGTH:
                 hashed = password_service.hash_password(pwd)
                 assert password_service.check_password(hashed, pwd) is True
                 # Verify wrong password fails
@@ -527,9 +506,7 @@ def test_password_validation_parametrized(password, should_be_valid):
         ("Test@123", "Test@124", False),  # Different character
     ],
 )
-def test_password_verification_parametrized(
-    correct_password, test_password, should_match
-):
+def test_password_verification_parametrized(correct_password, test_password, should_match):
     """Parametrized test for password verification."""
     service = PasswordService()
     hashed = service.hash_password(correct_password)
