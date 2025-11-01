@@ -27,11 +27,11 @@ load_result = load_dotenv(os.path.join(ROOT_DIR, CONFIG_FILENAME), override=True
 # Function to get the database URL
 def get_url():
     # Use os.getenv() to read the environment variable
-    url = os.getenv("DATABASE_URL")
+    url = os.getenv("AUTH_DATABASE_URL")
     print(url)
 
     if url is None:
-        raise Exception("DATABASE_URL environment variable is not set.")
+        raise Exception("AUTH_DATABASE_URL environment variable is not set.")
 
     return url
 

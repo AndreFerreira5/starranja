@@ -46,7 +46,7 @@ python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 pythonpath = "src"
-env_files = ["src/.env"]
+env_files = [".env"]
 
 [tool.coverage.report]
 exclude_lines = [

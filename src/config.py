@@ -157,7 +157,7 @@ class AuthSettings(BaseModel):
 
 class DatabaseSettings(BaseModel):
     # Database settings
-    DATABASE_URL: str | None = None
+    AUTH_DATABASE_URL: str | None = None
 
 
 class Settings(BaseSettings):
