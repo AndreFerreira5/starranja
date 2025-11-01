@@ -1,10 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
+from typing import Annotated
 
 from beanie import Document, Indexed
 from bson import ObjectId
-from pydantic import BaseModel, ConfigDict, Field, constr
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-VIN = constr(min_length=17, max_length=17)
+VIN = Annotated[str, StringConstraints(min_length=17, max_length=17)]
 
 
 # - This is the main entity model, as it is defined in the db table, it is used
@@ -17,14 +18,14 @@ VIN = constr(min_length=17, max_length=17)
 # - Field is just for us to keep the model properties named correctly with python (snake_case) and still use the
 #   table fields original name (camelCase)
 class Vehicle(Document):
-    client_id: Indexed(ObjectId)
-    license_plate: Indexed(str, unique=True) = Field(..., alias="licensePlate")
+    client_id: Annotated[ObjectId, Indexed()]
+    license_plate: Annotated[str, Indexed(unique=True)] = Field(..., alias="licensePlate")
     brand: str
     model: str = Field(..., min_length=1)
     kilometers: int = Field(ge=0)
-    vin: Indexed(VIN, unique=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow, alias="createdAt")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, alias="updatedAt")
+    vin: Annotated[VIN, Indexed(unique=True)]
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
     model_config = ConfigDict(populate_by_name=True)  # allow snake_case in code, camelCase in payloads
 
@@ -33,7 +34,7 @@ class Vehicle(Document):
 
     # keep updated_at field fresh
     async def save(self, *args, **kwargs):
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         return await super().save(*args, **kwargs)
 
 
@@ -70,7 +71,7 @@ class VehicleUpdate(BaseModel):
 
 
 class VehicleOut(VehicleBase):
-    id: str = Field(alias="id")
+    id: str = Field(alias="_id")
     client_id: str = Field(alias="clientId")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
