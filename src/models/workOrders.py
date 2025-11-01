@@ -1,13 +1,12 @@
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Annotated
 from uuid import UUID
 
 from beanie import Document, Indexed
 from bson import Decimal128, ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
-
-from typing import Annotated
 
 
 # --- Enums ---
