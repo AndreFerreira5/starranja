@@ -7,6 +7,8 @@ from bson import Decimal128, ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
+from typing import Annotated
+
 
 # --- Enums ---
 class WorkOrderStatus(str, Enum):
@@ -60,19 +62,19 @@ class WorkOrderItem(BaseModel):
 # ---- Beanie Document (DB model) ----
 class WorkOrder(Document):
     # --- References & Core IDs ---
-    work_order_number: Indexed(str, unique=True) = Field(..., alias="workOrderNumber")
-    client_id: Indexed(ObjectId) = Field(..., alias="clientId")
+    work_order_number: Annotated[str, Indexed(unique=True)] = Field(..., alias="workOrderNumber")
+    client_id: Annotated[ObjectId, Indexed()] = Field(..., alias="clientId")
     vehicle_id: ObjectId = Field(..., alias="vehicleId")  # Indexed via partial index
     created_by_id: UUID = Field(..., alias="createdById")  # User (PostgreSQL) who created the WO - UUID
     mechanics_ids: list[UUID] | None = Field(default=[], alias="mechanicsIds")  # Array of String (UUIDs)
     # referencing the users table in PostgreSQL.
 
     # --- Status & Flow Control ---
-    status: Indexed(WorkOrderStatus, default=WorkOrderStatus.AWAITING_DIAGNOSTIC)
+    status: Annotated[WorkOrderStatus, Indexed()] = Field(default=WorkOrderStatus.AWAITING_DIAGNOSTIC)
     is_active: bool = Field(default=True, alias="isActive")  # Default to True for new WOs
 
     # --- Embedded Data ---
-    quote: Quote | None = Field(default_factory=Quote)
+    quote: Quote | None = None
     items: list[WorkOrderItem] = Field(default=[])
 
     # --- Totals (Optional, as they are calculated) ---
@@ -81,13 +83,13 @@ class WorkOrder(Document):
     final_total_price_with_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
 
     # --- Timestamps ---
-    entry_date: Indexed(datetime) = Field(..., alias="entryDate")
+    entry_date: Annotated[datetime, Indexed()] = Field(..., alias="entryDate")
     diagnosis_registered_at: datetime | None = Field(None, alias="diagnosisRegisteredAt")
     quote_approved_at: datetime | None = Field(None, alias="quoteApprovedAt")
     completed_at: datetime | None = Field(None, alias="completedAt")
     delivered_at: datetime | None = Field(None, alias="deliveredAt")
-    created_at: datetime = Field(default_factory=datetime.now(UTC), alias="createdAt")
-    updated_at: datetime = Field(default_factory=datetime.now(UTC), alias="updatedAt")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
     model_config = ConfigDict(
         populate_by_name=True,
@@ -100,6 +102,8 @@ class WorkOrder(Document):
         # All complex indexes are define here.
         # Beanie's `Indexed()` wrapper handles the simple ones.
         indexes = [
+            # Unique WO number (moved from Indexed(..., unique=True) to an explicit IndexModel)
+            IndexModel([("workOrderNumber", 1)], unique=True),
             # Implements RB02 (FerretDB/DocumentDB compatible)
             IndexModel([("vehicleId", 1)], unique=True, partialFilterExpression={"isActive": True}),
             # Optimizes complex Dashboard queries (RF10),
