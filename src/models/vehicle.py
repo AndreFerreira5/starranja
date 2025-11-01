@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 
 from beanie import Document, Indexed
 from bson import ObjectId
@@ -12,6 +12,7 @@ VIN = constr(min_length=17, max_length=17)
 #   that means the Beanie will map the class to the collection - this is done in the class Settings below
 
 # - Indexed means the field will have an Index for faster queries
+
 
 # - Field is just for us to keep the model properties named correctly with python (snake_case) and still use the
 #   table fields original name (camelCase)
@@ -35,10 +36,12 @@ class Vehicle(Document):
         self.updated_at = datetime.utcnow()
         return await super().save(*args, **kwargs)
 
+
 # ---- Pydantic Schemas (FastAPI I/O) ----
 # this are example uses for the requests, we dont use
 # the Document class for everything so we dont expose internal fields and only expose necessary fields for the requests
 # and only the declared fields can be changed
+
 
 # - This is the base schema for the vehicles, it is only used for the
 #   others schemas to inherit so we dont have all the fields declared in
@@ -52,16 +55,19 @@ class VehicleBase(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+
 # - This is a schema for when creating a vehicle, it inherits the VehicleBase schema
 #   defined above and has client_id because when creating a vehicle we need to attach
 #   it to its owner/client
 class VehicleCreate(VehicleBase):
     client_id: ObjectId = Field(..., alias="clientId")
 
+
 class VehicleUpdate(BaseModel):
     kilometers: int | None = Field(None, ge=0)
 
     model_config = ConfigDict(populate_by_name=True)
+
 
 class VehicleOut(VehicleBase):
     id: str = Field(alias="id")
