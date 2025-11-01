@@ -66,9 +66,7 @@ class PasswordService:
             logger.info("PasswordHasher initialized with configured parameters")
         except Exception as e:
             logger.error(f"Failed to initialize PasswordHasher: {str(e)}")
-            raise PasswordHashingError(
-                "Failed to initialize password hashing service", original_error=e
-            )
+            raise PasswordHashingError("Failed to initialize password hashing service", original_error=e)
 
     def _validate_password(self, password: str) -> None:
         """
@@ -84,15 +82,10 @@ class PasswordService:
             raise InvalidPasswordError("Password must be a string")
 
         if len(password) < settings.auth.MIN_PASSWORD_LENGTH:
-            raise InvalidPasswordError(
-                f"Password must be at least {settings.auth.MIN_PASSWORD_LENGTH} "
-                "characters long"
-            )
+            raise InvalidPasswordError(f"Password must be at least {settings.auth.MIN_PASSWORD_LENGTH} characters long")
 
         if len(password) > settings.auth.MAX_PASSWORD_LENGTH:
-            raise InvalidPasswordError(
-                f"Password must not exceed {settings.auth.MAX_PASSWORD_LENGTH} characters"
-            )
+            raise InvalidPasswordError(f"Password must not exceed {settings.auth.MAX_PASSWORD_LENGTH} characters")
 
         if not password.strip():
             raise InvalidPasswordError("Password cannot be empty or whitespace only")
@@ -119,9 +112,7 @@ class PasswordService:
 
         except HashingError as e:
             logger.error(f"Argon2 hashing error: {str(e)}")
-            raise PasswordHashingError(
-                "Failed to hash password due to system error", original_error=e
-            )
+            raise PasswordHashingError("Failed to hash password due to system error", original_error=e)
         except Exception as e:
             logger.error(f"Unexpected error during password hashing: {str(e)}")
             raise PasswordHashingError(
@@ -164,15 +155,11 @@ class PasswordService:
 
         except InvalidHashError as e:
             logger.warning(f"Invalid hash format encountered: {str(e)}")
-            raise PasswordVerificationError(
-                "The stored password hash is invalid or corrupted", original_error=e
-            )
+            raise PasswordVerificationError("The stored password hash is invalid or corrupted", original_error=e)
 
         except VerificationError as e:
             logger.error(f"Argon2 verification error: {str(e)}")
-            raise PasswordVerificationError(
-                "Failed to verify password due to system error", original_error=e
-            )
+            raise PasswordVerificationError("Failed to verify password due to system error", original_error=e)
 
         except Exception as e:
             logger.error(f"Unexpected error during password verification: {str(e)}")
@@ -201,9 +188,7 @@ class PasswordService:
             # Return False on error - better to not rehash than to fail
             return False
 
-    def verify_and_update(
-        self, hashed_password: str, plain_password: str
-    ) -> tuple[bool, str | None]:
+    def verify_and_update(self, hashed_password: str, plain_password: str) -> tuple[bool, str | None]:
         """
         Verify password and return updated hash if parameters have changed.
 

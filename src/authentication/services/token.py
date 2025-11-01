@@ -61,14 +61,10 @@ class TokenService:
 
             # Validate key length (must be 32 bytes for v4.local)
             if len(key_material) != 64:  # 32 bytes = 64 hex characters
-                raise ValueError(
-                    "PASETO_SECRET_KEY must be exactly 32 bytes (64 hex characters)"
-                )
+                raise ValueError("PASETO_SECRET_KEY must be exactly 32 bytes (64 hex characters)")
 
             # Create the symmetric key for v4.local
-            self._key = pyseto.Key.new(
-                version=4, purpose="local", key=bytes.fromhex(key_material)
-            )
+            self._key = pyseto.Key.new(version=4, purpose="local", key=bytes.fromhex(key_material))
 
             logger.info("TokenService initialized with PASETO v4.local key")
 
@@ -78,9 +74,7 @@ class TokenService:
 
         except Exception as e:
             logger.error(f"Failed to initialize TokenService: {str(e)}")
-            raise TokenGenerationError(
-                "Failed to initialize token service", original_error=e
-            )
+            raise TokenGenerationError("Failed to initialize token service", original_error=e)
 
     def _validate_token_inputs(self, user_id: str, roles: list[str]) -> None:
         """
@@ -166,9 +160,7 @@ class TokenService:
 
         except Exception as e:
             logger.error(f"Failed to generate token: {str(e)}")
-            raise TokenGenerationError(
-                "An error occurred while generating the token", original_error=e
-            )
+            raise TokenGenerationError("An error occurred while generating the token", original_error=e)
 
     def verify_token(self, token: str) -> dict[str, Any]:
         """
@@ -215,9 +207,7 @@ class TokenService:
             # Check not-before time
             self._check_token_not_before(payload)
 
-            logger.debug(
-                f"Token verified successfully for user_id: {payload['user_id']}"
-            )
+            logger.debug(f"Token verified successfully for user_id: {payload['user_id']}")
             return payload
 
         except (TokenExpiredError, InvalidTokenError):
@@ -232,10 +222,7 @@ class TokenService:
                 logger.warning("Token has expired")
                 raise TokenExpiredError("Token has expired")
 
-            if (
-                "has not been activated yet" in error_msg
-                or "not yet valid" in error_msg
-            ):
+            if "has not been activated yet" in error_msg or "not yet valid" in error_msg:
                 logger.warning(f"Token not yet valid: {str(e)}")
                 raise InvalidTokenError("Token not yet valid (used before nbf time)")
 
@@ -273,9 +260,7 @@ class TokenService:
 
         for field in required_fields:
             if field not in payload:
-                raise InvalidTokenError(
-                    f"Token payload missing required field: {field}"
-                )
+                raise InvalidTokenError(f"Token payload missing required field: {field}")
 
         # Validate field types
         if not isinstance(payload["user_id"], str):
@@ -381,9 +366,7 @@ class TokenService:
 _token_service = TokenService()
 
 
-def generate_token(
-    user_id: str, roles: list[str], expires_in_minutes: int | None = None
-) -> str:
+def generate_token(user_id: str, roles: list[str], expires_in_minutes: int | None = None) -> str:
     """
     Module-level convenience function for token generation.
 

@@ -41,9 +41,7 @@ def valid_user_data():
 @pytest.fixture
 def valid_token(token_service, valid_user_data):
     """Generate a valid token for testing verification."""
-    return token_service.generate_token(
-        user_id=valid_user_data["user_id"], roles=valid_user_data["roles"]
-    )
+    return token_service.generate_token(user_id=valid_user_data["user_id"], roles=valid_user_data["roles"])
 
 
 # Test Class: Service Initialization
@@ -86,9 +84,7 @@ class TestTokenGeneration:
 
     def test_generate_token_with_valid_inputs(self, token_service, valid_user_data):
         """Test token generation with valid user data."""
-        token = token_service.generate_token(
-            user_id=valid_user_data["user_id"], roles=valid_user_data["roles"]
-        )
+        token = token_service.generate_token(user_id=valid_user_data["user_id"], roles=valid_user_data["roles"])
 
         assert isinstance(token, str)
         assert token.startswith("v4.local.")
@@ -374,9 +370,7 @@ class TestTokenVerificationInvalidTokens:
         }
 
         # Use json serializer instead of pyseto.JsonSerializer (which doesn't exist)
-        foreign_token = pyseto.encode(
-            key=different_key, payload=payload, serializer=json
-        ).decode("utf-8")
+        foreign_token = pyseto.encode(key=different_key, payload=payload, serializer=json).decode("utf-8")
 
         # Try to verify with our service (different key)
         with pytest.raises(InvalidTokenError):
@@ -420,9 +414,7 @@ class TestTokenExpiration:
     def test_verify_token_just_before_expiration(self, token_service):
         """Test token verification just before expiration."""
         # Generate token that expires in 5 seconds
-        token = token_service.generate_token(
-            user_id="user-666", roles=["user"], expires_in_minutes=5 / 60
-        )
+        token = token_service.generate_token(user_id="user-666", roles=["user"], expires_in_minutes=5 / 60)
 
         # Verify immediately (should succeed)
         payload = token_service.verify_token(token)
@@ -447,9 +439,7 @@ class TestTokenExpiration:
     def test_token_expiration_exact_boundary(self, token_service):
         """Test token at exact expiration boundary."""
         # Create a token that expires in 2 seconds
-        token = token_service.generate_token(
-            user_id="user-888", roles=["user"], expires_in_minutes=2 / 60
-        )
+        token = token_service.generate_token(user_id="user-888", roles=["user"], expires_in_minutes=2 / 60)
 
         # Verify works before expiration
         payload = token_service.verify_token(token)
@@ -480,9 +470,7 @@ class TestTokenPayloadValidation:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -500,9 +488,7 @@ class TestTokenPayloadValidation:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -521,9 +507,7 @@ class TestTokenPayloadValidation:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -542,9 +526,7 @@ class TestTokenPayloadValidation:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -563,9 +545,7 @@ class TestTokenPayloadValidation:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -592,9 +572,7 @@ class TestTokenNotBeforeTime:
             "nbf": future_time.isoformat(),  # Not yet valid
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError) as exc_info:
             token_service.verify_token(token)
@@ -615,9 +593,7 @@ class TestTokenNotBeforeTime:
             "nbf": past_time.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         result = token_service.verify_token(token)
         assert result["user_id"] == "user-1313"
@@ -635,9 +611,7 @@ class TestTokenNotBeforeTime:
             "nbf": now.isoformat(),
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         # Small delay to ensure nbf has passed
         time.sleep(0.1)
@@ -679,9 +653,7 @@ class TestModuleLevelFunctions:
 
     def test_module_generate_with_custom_expiration(self):
         """Test module-level generate with custom expiration."""
-        token = generate_token(
-            user_id="user-1919", roles=["user"], expires_in_minutes=30
-        )
+        token = generate_token(user_id="user-1919", roles=["user"], expires_in_minutes=30)
 
         payload = verify_token(token)
         exp_time = datetime.fromisoformat(payload["exp"])
@@ -699,9 +671,7 @@ class TestEdgeCasesAndIntegration:
         """Test generating and verifying many tokens sequentially."""
         tokens = []
         for i in range(100):
-            token = token_service.generate_token(
-                user_id=f"user-{i}", roles=[f"role-{i}"]
-            )
+            token = token_service.generate_token(user_id=f"user-{i}", roles=[f"role-{i}"])
             tokens.append((token, f"user-{i}", f"role-{i}"))
 
         # Verify all tokens
@@ -714,9 +684,7 @@ class TestEdgeCasesAndIntegration:
         """Test that tokens generated concurrently are all valid."""
 
         def generate_and_verify(index):
-            token = token_service.generate_token(
-                user_id=f"user-{index}", roles=["user"]
-            )
+            token = token_service.generate_token(user_id=f"user-{index}", roles=["user"])
             payload = token_service.verify_token(token)
             return payload["user_id"] == f"user-{index}"
 
@@ -769,9 +737,7 @@ class TestEdgeCasesAndIntegration:
 
     def test_token_decode_unsafe(self, token_service):
         """Test unsafe decode function for expired tokens."""
-        token = token_service.generate_token(
-            user_id="user-2323", roles=["user"], expires_in_minutes=1 / 60
-        )
+        token = token_service.generate_token(user_id="user-2323", roles=["user"], expires_in_minutes=1 / 60)
 
         # Wait for expiration
         time.sleep(2)
@@ -821,9 +787,7 @@ class TestEdgeCasesAndIntegration:
         token = token_service.generate_token(user_id="user-2525", roles=["user"])
 
         # Mock an unexpected error during decoding
-        with patch(
-            "pyseto.decode", side_effect=RuntimeError("Unexpected system error")
-        ):
+        with patch("pyseto.decode", side_effect=RuntimeError("Unexpected system error")):
             with pytest.raises(TokenValidationError) as exc_info:
                 token_service.verify_token(token)
             assert "unexpected error" in str(exc_info.value).lower()
@@ -838,9 +802,7 @@ class TestEdgeCasesAndIntegration:
             "nbf": "invalid-format",
         }
 
-        token = pyseto.encode(
-            key=token_service._key, payload=payload, serializer=json
-        ).decode("utf-8")
+        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
 
         with pytest.raises(InvalidTokenError):
             token_service.verify_token(token)
