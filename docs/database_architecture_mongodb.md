@@ -17,7 +17,7 @@ The model is **hybrid**, using a combination of **Referencing** (for data consis
 
 ## 2. Visual Schema Diagram
 
-![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v2.png)
+![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v3.png)
 
 ---
 
@@ -179,7 +179,35 @@ Stores finalized, immutable billing records. This collection **"snapshots"** (co
 
 ---
 
-## 7. PostgreSQL User Integration (The "Hydration" Contract)**
+## 7. Collection: `appointments`
+
+Stores all service bookings and manages the workshop's agenda (RF02).
+
+### Schema Definition
+
+| Field | Type | Required | Description                                                               |
+| :--- | :--- |:---------|:--------------------------------------------------------------------------|
+| `_id` | `ObjectId` | ✓        | Unique document identifier.                                               |
+| `clientId` | `ObjectId` | ✓        | Reference to the `clients._id`.                                           |
+| `appointmentDate` | `ISODate` | ✓        | Date and time of the scheduled booking.                                   |
+| `vehicleId` | `ObjectId` |          | Reference to the `vehicles` collection.                                   |
+| `workOrderId` | `ObjectId` |          | Reference to a `workOrder` (optional, e.g., for follow-ups).              |
+| `notes` | `String` |          | Client notes or service to be performed.                                  |
+| `status` | `String` | ✓        | Enum: `Scheduled`, `Completed`, `Canceled`.                                      |
+| `createdAt` | `ISODate` | ✓        | Timestamp when the invoice was created.                                   |
+| `updatedAt` | `ISODate` | ✓        | Timestamp of the last update.                       |
+
+### Indexes
+
+| Field(s) | Type         | Purpose |
+| :--- |:-------------| :--- |
+| `{ appointmentDate: -1 }` | **Simple**   |Fast lookup/sort for the agenda (newest first). |
+| `{ clientId: 1 }` | **Simple**   | Fast lookup for a client's appointment history. |
+| `{ status: 1, appointmentDate: 1 }` | **Compound** | Optimizes Dashboard/Agenda queries (RF10), filtering by status (e.g., 'Scheduled') and sorting by date. |
+
+---
+
+## 8. PostgreSQL User Integration (The "Hydration" Contract)
 
 **This section defines the "contract" for handling user data, as specified in RNF02.**
 
