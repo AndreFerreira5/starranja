@@ -141,36 +141,37 @@ class WorkOrderUpdate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    class WorkOrderOut(BaseModel):
-        """Full Work Order schema for API responses."""
 
-        id: str = Field(..., alias="_id")  # Beanie/Pydantic automatically handle ObjectId to str
-        work_order_number: str = Field(..., alias="workOrderNumber")
-        client_id: str = Field(..., alias="clientId")  # ObjectId serialized to string
-        vehicle_id: str = Field(..., alias="vehicleId")  # ObjectId serialized to string
-        created_by_id: UUID = Field(..., alias="createdById")
-        mechanics_ids: list[UUID] | None = Field(None, alias="mechanicsIds")
+class WorkOrderOut(BaseModel):
+    """Full Work Order schema for API responses."""
 
-        status: WorkOrderStatus
-        is_active: bool = Field(..., alias="isActive")
+    id: str = Field(..., alias="_id")  # Beanie/Pydantic automatically handle ObjectId to str
+    work_order_number: str = Field(..., alias="workOrderNumber")
+    client_id: str = Field(..., alias="clientId")  # ObjectId serialized to string
+    vehicle_id: str = Field(..., alias="vehicleId")  # ObjectId serialized to string
+    created_by_id: UUID = Field(..., alias="createdById")
+    mechanics_ids: list[UUID] | None = Field(None, alias="mechanicsIds")
 
-        quote: Quote | None = Field(None)
-        items: list[WorkOrderItem] = Field(default=[])
+    status: WorkOrderStatus
+    is_active: bool = Field(..., alias="isActive")
 
-        final_total_price_without_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
-        final_total_iva: Decimal128 | None = Field(None, alias="finalTotalIVA")
-        final_total_price_with_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
+    quote: Quote | None = Field(None)
+    items: list[WorkOrderItem] = Field(default=[])
 
-        entry_date: datetime = Field(..., alias="entryDate")
-        diagnosis_registered_at: datetime | None = Field(None, alias="diagnosisRegisteredAt")
-        quote_approved_at: datetime | None = Field(None, alias="quoteApprovedAt")
-        completed_at: datetime | None = Field(None, alias="completedAt")
-        delivered_at: datetime | None = Field(None, alias="deliveredAt")
-        created_at: datetime = Field(..., alias="createdAt")
-        updated_at: datetime = Field(..., alias="updatedAt")
+    final_total_price_without_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
+    final_total_iva: Decimal128 | None = Field(None, alias="finalTotalIVA")
+    final_total_price_with_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
 
-        model_config = ConfigDict(
-            populate_by_name=True,
-            from_attributes=True,  # Allows Beanie doc to be mapped to this schema
-            arbitrary_types_allowed=True,  # For Decimal128
-        )
+    entry_date: datetime = Field(..., alias="entryDate")
+    diagnosis_registered_at: datetime | None = Field(None, alias="diagnosisRegisteredAt")
+    quote_approved_at: datetime | None = Field(None, alias="quoteApprovedAt")
+    completed_at: datetime | None = Field(None, alias="completedAt")
+    delivered_at: datetime | None = Field(None, alias="deliveredAt")
+    created_at: datetime = Field(..., alias="createdAt")
+    updated_at: datetime = Field(..., alias="updatedAt")
+
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,  # Allows Beanie doc to be mapped to this schema
+        arbitrary_types_allowed=True,  # For Decimal128
+    )
