@@ -51,9 +51,9 @@ class InvoiceAddress(BaseModel):
 class InvoiceClientDetails(BaseModel):
     """Embedded snapshot of client details for an invoice."""
 
-    street: str | None = None
-    city: str | None = None
-    zip_code: str | None = Field(None, alias="zipCode")
+    name: str
+    nif: str
+    address: InvoiceAddress
 
     model_config = ConfigDict(populate_by_name=True)
 
