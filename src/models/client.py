@@ -1,14 +1,14 @@
-﻿from datetime import datetime
+from datetime import UTC, datetime
+from typing import Annotated
 
-from typing import Optional
-from beanie import Document, Indexed
-from pydantic import BaseModel, ConfigDict, Field, EmailStr
+from beanie import Document, Indexed, before_event, Insert, Save, Replace
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
 # ---- Nested type ----
 class Address(BaseModel):
-    street: Optional[str] = Field(None, alias="street")
-    city: Optional[str] = Field(None, alias="city")
-    zip_code: Optional[str] = Field(None, alias="zipCode")
+    street: str | None = Field(None, alias="street")
+    city: str | None = Field(None, alias="city")
+    zip_code: str | None = Field(None, alias="zipCode")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -17,14 +17,14 @@ class Address(BaseModel):
 class Client(Document):
     # Required fields
     name: str = Field(...)
-    nif: Indexed(str, unique=True) = Field(...)
-    phone: Indexed(str) = Field(...)
+    nif: Annotated[str, Indexed(unique=True)] = Field(...)
+    phone: Annotated[str, Indexed()] = Field(...)
 
-    email: Optional[EmailStr] = Field(None)
-    address: Optional[Address] = Field(None)
+    email: EmailStr | None = Field(None)
+    address: Address | None = Field(None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow, alias="createdAt")
-    updated_at: datetime = Field(default_factory=datetime.utcnow, alias="updatedAt")
+    created_at: datetime = Field(default_factory=datetime.now(UTC), alias="createdAt")
+    updated_at: datetime = Field(default_factory=datetime.now(UTC), alias="updatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -33,18 +33,24 @@ class Client(Document):
 
     # keep updated_at fresh on save/replace
     async def save(self, *args, **kwargs):
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
         return await super().save(*args, **kwargs)
+
+    @before_event([Insert, Save, Replace])
+    def _touch_updated_at(self):
+        self.updated_at = datetime.now(UTC)
 
 # ---- Pydantic Schemas (FastAPI I/O) ----
 
+
 class AddressCreate(Address):
-    pass # everything in Address is required on create
+    pass  # everything in Address is required on create
+
 
 class AddressUpdate(BaseModel):
-    street: Optional[str] = None
-    city: Optional[str] = None
-    zip_code: Optional[str] = Field(None, alias="zipCode")
+    street: str | None = None
+    city: str | None = None
+    zip_code: str | None = Field(None, alias="zipCode")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -55,28 +61,29 @@ class ClientBase(BaseModel):
     phone: str
 
     # Optional on create
-    email: Optional[EmailStr] = None
-    address: Optional[AddressCreate] = None
+    email: EmailStr | None = None
+    address: AddressCreate | None = None
 
     model_config = ConfigDict(populate_by_name=True)
+
 
 # - Partial update; all fields optional
 class ClientCreate(ClientBase):
     pass  # everything in ClientBase is required on create
 
+
 # - Partial update; all fields optional
 class ClientUpdate(BaseModel):
-    name: Optional[str] = None
-    nif: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[EmailStr] = None
-    address: Optional[AddressUpdate] = None
+    name: str | None = None
+    nif: str | None = None
+    phone: str | None = None
+    email: EmailStr | None = None
+    address: AddressUpdate | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
 
 class ClientOut(ClientBase):
-    id: str = Field(alias="id")
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
 
