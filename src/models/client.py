@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from beanie import Document, Indexed
-from beanie import Insert, Replace, Save, before_event
+from beanie import Document, Indexed, Insert, Replace, Save, before_event
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 
 # ---- Nested type ----
 class Address(BaseModel):
@@ -24,8 +24,8 @@ class Client(Document):
     email: EmailStr | None = Field(None)
     address: Address | None = Field(None)
 
-    created_at: datetime = Field(default_factory=datetime.now(UTC), alias="createdAt")
-    updated_at: datetime = Field(default_factory=datetime.now(UTC), alias="updatedAt")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -40,6 +40,7 @@ class Client(Document):
     @before_event([Insert, Save, Replace])
     def _touch_updated_at(self):
         self.updated_at = datetime.now(UTC)
+
 
 # ---- Pydantic Schemas (FastAPI I/O) ----
 
