@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from beanie import Document, Indexed, before_event, Insert, Save, Replace
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+from beanie import Document, Indexed
+from beanie import Insert, Replace, Save, before_event
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # ---- Nested type ----
 class Address(BaseModel):
