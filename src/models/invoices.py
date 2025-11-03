@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 from enum import Enum
-from typing import List, Optional
 from typing import Annotated
 from uuid import UUID
 
@@ -9,26 +8,32 @@ from bson import Decimal128, ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
+from typing import TYPE_CHECKING
+
 # Importing the WorkOrderItem from workOrders.py
 # This is crucial for the "snapshot" of items
-try:
+if TYPE_CHECKING:
     from .workOrders import WorkOrderItem
-except ImportError:
-    # Handle standalone execution or define a placeholder if needed
-    class WorkOrderItem(BaseModel):
-        type: str
-        description: str
-        reference: str
-        quantity: Decimal128
-        unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
-        iva_rate: Decimal128
-        total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
-        model_config = ConfigDict(populate_by_name=True)
+else:
+    try:
+        from .workOrders import WorkOrderItem
+    except ImportError:
+        # Runtime fallback only; (mypy will ignore this)
+        class WorkOrderItem(BaseModel):
+            type: str
+            description: str
+            reference: str
+            quantity: Decimal128
+            unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
+            iva_rate: Decimal128
+            total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
+            model_config = ConfigDict(populate_by_name=True)
 
 
 # --- Enums  ---
 class InvoiceStatus(str, Enum):
     """Enumeration of possible invoice statuses."""
+
     EMITTED = "Emitted"
     PAID = "Paid"
     CANCELED = "Canceled"
@@ -37,15 +42,17 @@ class InvoiceStatus(str, Enum):
 # ---- Embedded Schemas ----
 class InvoiceAddress(BaseModel):
     """Embedded snapshot of an address for an invoice."""
-    street: Optional[str] = None
-    city: Optional[str] = None
-    zip_code: Optional[str] = Field(None, alias="zipCode")
+
+    street: str | None = None
+    city: str | None = None
+    zip_code: str | None = Field(None, alias="zipCode")
 
     model_config = ConfigDict(populate_by_name=True)
 
 
 class InvoiceClientDetails(BaseModel):
     """Embedded snapshot of client details for an invoice."""
+
     street: str | None = None
     city: str | None = None
     zip_code: str | None = Field(None, alias="zipCode")
@@ -55,6 +62,7 @@ class InvoiceClientDetails(BaseModel):
 
 class InvoiceVehicleDetails(BaseModel):
     """Embedded snapshot of vehicle details for an invoice."""
+
     license_plate: str = Field(..., alias="licensePlate")
     brand: str
     model: str
@@ -68,6 +76,7 @@ class Invoice(Document):
     Main Beanie document model for the 'invoices' collection.
     Represents a finalized, immutable billing record.
     """
+
     # --- Core Invoice Info ---
     invoice_number: str = Field(..., alias="invoiceNumber")
     invoice_date: Annotated[datetime, Indexed()] = Field(..., alias="invoiceDate")
@@ -81,7 +90,7 @@ class Invoice(Document):
     # --- Snapshot Data ---
     client_details: InvoiceClientDetails = Field(..., alias="clientDetails")
     vehicle_details: InvoiceVehicleDetails = Field(..., alias="vehicleDetails")
-    items: List[WorkOrderItem] = Field(...)  # Full copy of items from WorkOrder
+    items: list[WorkOrderItem] = Field(...)  # Full copy of items from WorkOrder
 
     # --- Snapshot Totals ---
     total_without_iva: Decimal128 = Field(..., alias="totalWithoutIVA")
@@ -94,7 +103,7 @@ class Invoice(Document):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        arbitrary_types_allowed=True  # Required for Decimal128
+        arbitrary_types_allowed=True,  # Required for Decimal128
     )
 
     class Settings:
@@ -103,9 +112,8 @@ class Invoice(Document):
         indexes = [
             # Ensures no duplicate invoice numbers (fiscal requirement)
             IndexModel([("invoiceNumber", 1)], unique=True),
-
             # Ensures a work order can only be invoiced once
-            IndexModel([("workOrderId", 1)], unique=True)
+            IndexModel([("workOrderId", 1)], unique=True),
         ]
 
     # Keep updated_at field fresh
@@ -121,6 +129,7 @@ class InvoiceCreate(BaseModel):
     The backend service will take this WorkOrder ID,
     verify RB01, and perform the snapshot.
     """
+
     work_order_id: ObjectId = Field(..., alias="workOrderId")
 
     model_config = ConfigDict(populate_by_name=True)
@@ -131,6 +140,7 @@ class InvoiceUpdate(BaseModel):
     Schema for updating an Invoice.
     Typically, only the status is updatable (e.g., to 'Paid' or 'Canceled').
     """
+
     status: InvoiceStatus
 
     model_config = ConfigDict(populate_by_name=True)
@@ -138,6 +148,7 @@ class InvoiceUpdate(BaseModel):
 
 class InvoiceOut(BaseModel):
     """Full Invoice schema for API responses."""
+
     id: str = Field(..., alias="_id")  # ObjectId serialized to string
     invoice_number: str = Field(..., alias="invoiceNumber")
     invoice_date: datetime = Field(..., alias="invoiceDate")
@@ -161,5 +172,5 @@ class InvoiceOut(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
         from_attributes=True,  # Allows Beanie doc to be mapped to this schema
-        arbitrary_types_allowed=True  # For Decimal128
+        arbitrary_types_allowed=True,  # For Decimal128
     )
