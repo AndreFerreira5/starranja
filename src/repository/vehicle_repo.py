@@ -24,7 +24,7 @@ class VehicleRepo:
         Raises:
             Exception: If the license plate already exists (unique constraint violation)
         """
-        logger.info(f"Creating vehicle with license plate {vehicle_data.get('licensePlate')}")
+        logger.info(f"Creating vehicle with license plate {vehicle_data.license_plate}")
 
         raise NotImplementedError("create_vehicle method not yet implemented")
 
