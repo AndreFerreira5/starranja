@@ -4,7 +4,8 @@ from typing import Annotated
 from uuid import UUID
 
 from beanie import Document, Indexed
-from bson import Decimal128, ObjectId
+from bson import ObjectId
+from bson.decimal128 import Decimal128
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
