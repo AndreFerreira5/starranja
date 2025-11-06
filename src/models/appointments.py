@@ -45,7 +45,7 @@ class AppointmentCreate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-class appointmentUpdate(BaseModel):
+class AppointmentUpdate(BaseModel):
     """Schema for updating an Appointment. """
 
     notes: str | None = Field(None)
