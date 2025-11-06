@@ -30,7 +30,7 @@ class AuthSettings(BaseModel):
     # ========================================================================
 
     PASETO_SECRET_KEY: str = Field(
-        default="",
+        ...,
         description=("PASETO symmetric key (must be exactly 64 hex characters / 32 bytes)"),
     )
 
@@ -153,7 +153,13 @@ class Settings(BaseSettings):
     auth: AuthSettings = Field(default_factory=AuthSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+        env_nested_delimiter='__'
+    )
 
 
 settings = Settings()
