@@ -58,6 +58,7 @@ class TokenService:
         """
         try:
             key_material = settings.auth.PASETO_SECRET_KEY
+            print("KEY: ", key_material)
 
             # Validate key length (must be 32 bytes for v4.local)
             if len(key_material) != 64:  # 32 bytes = 64 hex characters
