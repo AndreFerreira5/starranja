@@ -1,10 +1,8 @@
 import logging
-from typing import Optional
+
 from bson import ObjectId
-from datetime import datetime
 
 from src.models.vehicle import Vehicle, VehicleCreate, VehicleUpdate
-
 
 logger = logging.getLogger(__name__)
 
