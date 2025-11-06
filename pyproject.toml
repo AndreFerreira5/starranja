@@ -15,6 +15,9 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "psycopg2-binary>=2.9.9",
     "pyseto>=1.8.5",
+    "beanie>=2.0.0",
+    "pymongo>=4.15.3",
+    "bson>=0.5.10",
 ]
 
 [dependency-groups]
