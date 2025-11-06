@@ -1,7 +1,10 @@
 import logging
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.exc import SQLAlchemyError
 from contextlib import asynccontextmanager
+
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from src.config import settings
 
 logger = logging.getLogger(__name__)
@@ -16,28 +19,21 @@ class PostgreSQLDatabase:
         if self._engine is None:
             try:
                 db_url = str(settings.database.AUTH_DATABASE_URL)
-                if db_url.startswith('postgresql://'):
-                    db_url = db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+                if db_url.startswith("postgresql://"):
+                    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
                 self._engine = create_async_engine(
-                    db_url,
-                    pool_pre_ping=True,
-                    pool_recycle=3600,
-                    pool_size=10,
-                    max_overflow=20
+                    db_url, pool_pre_ping=True, pool_recycle=3600, pool_size=10, max_overflow=20
                 )
 
                 async with self._engine.begin() as conn:
-                    await conn.execute("SELECT 1")
+                    await conn.execute(text("SELECT 1"))
 
                 self._session_factory = async_sessionmaker(
-                    self._engine,
-                    class_=AsyncSession,
-                    expire_on_commit=False,
-                    autocommit=False,
-                    autoflush=False
+                    self._engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
                 )
-
+                async with self._engine.begin() as conn:
+                    await conn.execute(text("SELECT 1"))
                 logger.info("Successfully connected to PostgreSQL")
             except SQLAlchemyError as e:
                 logger.error(f"Failed to connect to PostgreSQL: {str(e)}")

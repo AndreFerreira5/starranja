@@ -1,19 +1,15 @@
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
 
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .services.token import TokenService
 from .exceptions import InvalidTokenError, TokenExpiredError
-
+from .services.token import TokenService
 
 TOKEN_SERVICE = TokenService()
 
 
-security_scheme = HTTPBearer(
-    scheme_name="PASETO Token",
-    auto_error=False
-)
+security_scheme = HTTPBearer(scheme_name="PASETO Token", auto_error=False)
 
 
 class AuthDependency:
@@ -23,14 +19,12 @@ class AuthDependency:
     """
 
     async def __call__(
-            self,
-            auth: Annotated[HTTPAuthorizationCredentials | None, Depends(security_scheme)],
+        self,
+        auth: Annotated[HTTPAuthorizationCredentials | None, Depends(security_scheme)],
     ) -> dict:
-
         if auth is None or auth.scheme.lower() != "bearer" or not auth.credentials:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token de autenticação ausente ou inválido."
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de autenticação ausente ou inválido."
             )
 
         token = auth.credentials
@@ -40,21 +34,14 @@ class AuthDependency:
             return payload
 
         except TokenExpiredError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token de acesso expirado."
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de acesso expirado.")
 
         except InvalidTokenError as e:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Token inválido: {e}"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token inválido: {e}")
 
         except Exception:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Falha interna na validação do token."
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Falha interna na validação do token."
             )
 
 
