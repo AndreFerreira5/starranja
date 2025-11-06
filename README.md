@@ -22,4 +22,4 @@ For that you should run:
 pre-commit install
 ```
 
-Now, every time you commit, the checks are ran and if failed, they prevent your commit to go through!
+Now, every time you commit, the checks are ran and if failed, they prevent your commit from going through!
