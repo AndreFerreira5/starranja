@@ -8,13 +8,13 @@ from bson import Decimal128, ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
-# Importing the WorkOrderItem from workOrders.py
+# Importing the WorkOrderItem from workOrder.py
 # This is crucial for the "snapshot" of items
 if TYPE_CHECKING:
-    from .workOrders import WorkOrderItem
+    from .workOrder import WorkOrderItem
 else:
     try:
-        from .workOrders import WorkOrderItem
+        from .workOrder import WorkOrderItem
     except ImportError:
         # Runtime fallback only; (mypy will ignore this)
         class WorkOrderItem(BaseModel):
