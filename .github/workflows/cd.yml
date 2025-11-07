@@ -1,10 +1,14 @@
 name: Build Docker Container
 
 on:
-  workflow_run:
-    workflows: [ "Test" ]
-    types: [ completed ]
-    branches: [ main ]
+  #workflow_run:
+  #  workflows: [ "Test" ]
+  #  types: [ completed ]
+  #  branches: [ main ]
+  push:
+    branches: [ "*" ]
+  pull_request:
+    branches: [ "*" ]
 
 env:
   DOCKER_REGISTRY: ghcr.io
