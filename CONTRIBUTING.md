@@ -7,7 +7,7 @@ writing tests before implementing features to promote code design and minimize b
    - Write validation tests if applicable
    - Define your model structure
 
-2. **Develop [Database Interfacing Files](src/db)** - Build the interaction layer between our backend and the database
+2. **Develop [Database Interfacing Files](src/repository)** - Build the interaction layer between our backend and the database
    - Write DB tests (using fixtures/test DB)
    - Tests FAIL
    - Implement CRUD operations against the existing databases (using the previously created models)
