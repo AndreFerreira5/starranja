@@ -1,0 +1,34 @@
+services:
+  postgres-test:
+    image: ghcr.io/ferretdb/postgres-documentdb:17-0.106.0-ferretdb-2.5.0
+    restart: on-failure
+    environment:
+      - POSTGRES_USER=${MONGO_DB_USER}
+      - POSTGRES_PASSWORD=${MONGO_DB_PASSWORD}
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./data-test:/var/lib/postgresql/data
+
+  ferretdb-test:
+    image: ghcr.io/ferretdb/ferretdb:2.5.0
+    restart: on-failure
+    ports:
+      - 27016:27017
+    environment:
+      - FERRETDB_POSTGRESQL_URL=postgres://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@postgres:5432/postgres
+
+  postgres-auth-test:
+    image: postgres:18
+    restart: on-failure
+    environment:
+      - POSTGRES_USER=${AUTH_DB_USER}
+      - POSTGRES_PASSWORD=${AUTH_DB_PASSWORD}
+      - POSTGRES_DB=authdb
+    ports:
+      - 5434:5432
+    volumes:
+      - ./auth-data-test:/var/lib/postgresql
+
+networks:
+  default:
+    name: ferretdb-test
