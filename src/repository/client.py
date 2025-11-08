@@ -22,9 +22,9 @@ class ClientRepo:
             Created client data with _id, createdAt, and updatedAt fields
 
         Raises:
-            Exception: If the license plate already exists (unique constraint violation)
+            Exception: If the nif number already exists (unique constraint violation)
         """
-        logger.info(f"Creating client with license plate {client_data.license_plate}")
+        logger.info(f"Creating client with nif number {client_data.nif}")
 
         raise NotImplementedError("create_client method not yet implemented")
 
@@ -44,17 +44,17 @@ class ClientRepo:
 
     async def get_by_nif(self, nif: str) -> Client | None:
         """
-        Retrieve a client by its license plate.
+        Retrieve a client by its nif number.
 
         Args:
-            license_plate: Client license plate number
+            nif: Client nif number
 
         Returns:
             Client document if found, None otherwise
         """
-        logger.info(f"Retrieving client by license plate: {nif}")
+        logger.info(f"Retrieving client by nif number: {nif}")
 
-        raise NotImplementedError("get_by_license_plate method not yet implemented")
+        raise NotImplementedError("get_by_nif method not yet implemented")
 
     async def update(self, client_id: ObjectId, update_data: ClientUpdate) -> Client | None:
         """
