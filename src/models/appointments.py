@@ -57,7 +57,6 @@ class AppointmentUpdate(BaseModel):
     vehicle_id: ObjectId | None = Field(None, alias="vehicleId")
     work_order_id: ObjectId | None = Field(None, alias="workOrderId")
 
-    appointment_date: datetime | None = Field(None, alias="appointmentDate")  # is appointment date updatable?
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
