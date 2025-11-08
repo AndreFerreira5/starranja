@@ -2,6 +2,9 @@ import os
 from collections.abc import AsyncGenerator
 from secrets import token_hex
 
+if "PASETO_SECRET_KEY" not in os.environ:
+    os.environ["PASETO_SECRET_KEY"] = token_hex(32)
+
 import pytest
 import pytest_asyncio
 from dotenv import load_dotenv
