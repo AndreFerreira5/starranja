@@ -3,3 +3,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 To create the tables:
 alembic upgrade head
+
+Populate roles Table:
+python scripts/db/postgresql/init_roles_table.py
