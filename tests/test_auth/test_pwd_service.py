@@ -137,7 +137,7 @@ class TestPasswordService:
                 assert isinstance(hashed, str)
                 assert hashed.startswith("$argon2id$")
 
-    @patch("authentication.services.password.PasswordHasher")
+    @patch("src.authentication.services.password.PasswordHasher")
     def test_hash_password_hashing_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling when Argon2 hashing fails."""
         mock_hasher = MagicMock()
@@ -207,7 +207,7 @@ class TestPasswordService:
         with pytest.raises(InvalidPasswordError):
             password_service.check_password(hashed, None)
 
-    @patch("authentication.services.password.PasswordHasher")
+    @patch("src.authentication.services.password.PasswordHasher")
     def test_check_password_verification_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling when Argon2 verification fails."""
         mock_hasher = MagicMock()
@@ -219,7 +219,7 @@ class TestPasswordService:
 
         assert "system error" in str(exc_info.value).lower()
 
-    @patch("authentication.services.password.PasswordHasher")
+    @patch("src.authentication.services.password.PasswordHasher")
     def test_check_password_invalid_hash_error(self, mock_hasher_class, password_service, valid_password):
         """Test proper error handling for corrupted hash."""
         mock_hasher = MagicMock()
@@ -241,7 +241,7 @@ class TestPasswordService:
         # With current parameters, should not need rehashing
         assert needs_rehash is False
 
-    @patch("authentication.services.password.PasswordHasher")
+    @patch("src.authentication.services.password.PasswordHasher")
     def test_check_needs_rehash_updated_parameters(self, mock_hasher_class, password_service, valid_password):
         """Test that old hashes are detected as needing rehash."""
         mock_hasher = MagicMock()
@@ -275,7 +275,7 @@ class TestPasswordService:
         assert is_valid is False
         assert new_hash is None
 
-    @patch("authentication.services.password.PasswordHasher")
+    @patch("src.authentication.services.password.PasswordHasher")
     def test_verify_and_update_with_rehash(self, mock_hasher_class, password_service, valid_password):
         """Test verify_and_update when rehashing is needed."""
         # First create a real hash
