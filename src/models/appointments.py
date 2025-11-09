@@ -7,6 +7,7 @@ from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
 
+
 class AppointmentStatus(str, Enum):
     """Enumeration of possible appointment statuses."""
 
@@ -14,7 +15,8 @@ class AppointmentStatus(str, Enum):
     COMPLETED = "Completed"
     CANCELLED = "Cancelled"
 
-#--- Beanie Document (DB model) ---
+
+# --- Beanie Document (DB model) ---
 class Appointment(Document):
     client_id: Annotated[ObjectId, Indexed()] = Field(..., alias="clientId")
     vehicle_id: Annotated[ObjectId, Indexed()] | None = Field(None, alias="vehicleId")
@@ -27,16 +29,16 @@ class Appointment(Document):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
-    model_config = ConfigDict(populate_by_name=True, 
-                              arbitrary_types_allowed=True)
-    
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+
     class Settings:
         name = "appointments"  # collection name
 
         indexes = [
             IndexModel([("appointmentDate", -1)]),
             IndexModel([("clientId", 1)]),
-            IndexModel([("status", 1), ("appointmentDate", -1)])]
+            IndexModel([("status", 1), ("appointmentDate", -1)]),
+        ]
 
     # keep updated_at field fresh
     async def save(self, *args, **kwargs):
@@ -51,8 +53,7 @@ class AppointmentCreate(BaseModel):
     appointment_date: datetime = Field(..., alias="appointmentDate")
     notes: str | None = Field(None)
 
-    model_config = ConfigDict(populate_by_name=True, 
-                              arbitrary_types_allowed=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class AppointmentUpdate(BaseModel):
@@ -64,8 +65,7 @@ class AppointmentUpdate(BaseModel):
     vehicle_id: ObjectId | None = Field(None, alias="vehicleId")
     work_order_id: ObjectId | None = Field(None, alias="workOrderId")
 
-    model_config = ConfigDict(populate_by_name=True, 
-                              arbitrary_types_allowed=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class AppointmentOut(BaseModel):
