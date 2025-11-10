@@ -76,12 +76,19 @@ async def sample_work_order(init_db, sample_client, sample_vehicle):
 
 async def test_create_work_order_success(work_order_repo, sample_client, sample_vehicle):
     """Test creating a new work order successfully."""
+
+    # 1. Simulate a logged-in user's ID
+    test_user_id = uuid4()
+
     create_data = WorkOrderCreate(
         client_id=sample_client.id,
         vehicle_id=sample_vehicle.id,
         entry_date=datetime.now(UTC),
         client_observations="Test observation",
     )
+
+    # 2. Pass the user's ID to the method
+    new_wo = await work_order_repo.create_work_order(create_data, created_by_id=test_user_id)
 
     # This will fail with NotImplementedError
     new_wo = await work_order_repo.create_work_order(create_data)

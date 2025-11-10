@@ -1,6 +1,8 @@
 import logging
+from uuid import UUID
 
 from bson import ObjectId
+from pymongo import ReturnDocument
 
 from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderUpdate
 
@@ -11,8 +13,24 @@ class WorkOrderRepo:
     def __init__(self, db):
         self.db = db
         self.collection = "workOrders"
+        self.counters_collection = db["counters"]
 
-    async def create_work_order(self, work_order_data: WorkOrderCreate) -> WorkOrder:
+        async def _get_next_work_order_number(self) -> str:
+            """
+            Atomically increments and retrieves the next work order number.
+            This uses a separate 'counters' collection to prevent race conditions.
+            """
+            counter_doc = await self.counters_collection.find_one_and_update(
+                {"_id": "workOrderNumber"},
+                {"$inc": {"seq": 1}},
+                upsert=True,  # Creates the counter if it doesn't exist
+                return_document=ReturnDocument.AFTER,
+            )
+            seq = counter_doc["seq"]
+
+            return f"{seq:04d}"
+
+    async def create_work_order(self, work_order_data: WorkOrderCreate, created_by_id: UUID) -> WorkOrder:
         """
         Create a new work order.
 
@@ -25,6 +43,7 @@ class WorkOrderRepo:
             Exception: If the workOrderNumber already exists (unique constraint)
             Exception: If an active work order for the vehicleId already exists (partial unique constraint)
         """
+
         logger.info(f"Creating work order for vehicle: {work_order_data.vehicle_id}")
 
         raise NotImplementedError("create_work_order method not yet implemented")
