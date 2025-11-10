@@ -6,7 +6,8 @@ from src.models.appointments import Appointment, AppointmentCreate, AppointmentU
 
 logger = logging.getLogger(__name__)
 
-class Appointment:
+
+class AppointmentRepo:
     def __init__(self, db):
         self.db = db
         self.collection = "appointments"
