@@ -28,7 +28,7 @@ class AppointmentRepo:
 
         raise NotImplementedError("create_appointment method not yet implemented")
 
-    async def get_by_id(self, appointment_id: ObjectId) -> Appointment | None:
+    async def get_appointment_by_id(self, appointment_id: ObjectId) -> Appointment | None:
         """
         Retrieve an appointment by its ID.
 
@@ -41,6 +41,34 @@ class AppointmentRepo:
         logger.info(f"Retrieving appointment by ID: {appointment_id}")
 
         raise NotImplementedError("get_by_id method not yet implemented")
+
+    async def get_appointments_by_client_id(self, client_id: ObjectId) -> list[Appointment] | None:
+        """
+        Retrieve appointments by client ID.
+
+        Args:
+            client_id: MongoDB ObjectId of the client
+
+        Returns:
+            List of Appointment documents if found, None otherwise
+        """
+        logger.info(f"Retrieving appointments for client ID: {client_id}")
+
+        raise NotImplementedError("get_by_client_id method not yet implemented")
+
+    async def get_appointments_by_vehicle_id(self, vehicle_id: ObjectId) -> list[Appointment] | None:
+        """
+        Retrieve appointments by vehicle ID.
+
+        Args:
+            vehicle_id: MongoDB ObjectId of the vehicle
+
+        Returns:
+            List of Appointment documents if found, None otherwise
+        """
+        logger.info(f"Retrieving appointments for vehicle ID: {vehicle_id}")
+
+        raise NotImplementedError("get_by_vehicle_id method not yet implemented")
 
     async def update(self, appointment_id: ObjectId, update_data: AppointmentUpdate) -> Appointment | None:
         """
