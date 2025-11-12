@@ -3,8 +3,9 @@ from uuid import UUID
 
 from bson import ObjectId
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
-from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderUpdate
+from src.models.work_orders import Quote, WorkOrder, WorkOrderCreate, WorkOrderUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -15,26 +16,27 @@ class WorkOrderRepo:
         self.collection = "workOrders"
         self.counters_collection = db["counters"]
 
-        async def _get_next_work_order_number(self) -> str:
-            """
-            Atomically increments and retrieves the next work order number.
-            This uses a separate 'counters' collection to prevent race conditions.
-            """
-            counter_doc = await self.counters_collection.find_one_and_update(
-                {"_id": "workOrderNumber"},
-                {"$inc": {"seq": 1}},
-                upsert=True,  # Creates the counter if it doesn't exist
-                return_document=ReturnDocument.AFTER,
-            )
-            seq = counter_doc["seq"]
+    async def _get_next_work_order_number(self) -> str:
+        """
+        Atomically increments and retrieves the next work order number.
+        This uses a separate 'counters' collection to prevent race conditions.
+        """
+        counter_doc = await self.counters_collection.find_one_and_update(
+            {"_id": "workOrderNumber"},
+            {"$inc": {"seq": 1}},
+            upsert=True,  # Creates the counter if it doesn't exist
+            return_document=ReturnDocument.AFTER,
+        )
+        seq = counter_doc["seq"]
 
-            return f"{seq:04d}"
+        return f"{seq:04d}"
 
     async def create_work_order(self, work_order_data: WorkOrderCreate, created_by_id: UUID) -> WorkOrder:
         """
         Create a new work order.
 
         Args:
+            created_by_id: ID of the user who created the work order.
             work_order_data: Dictionary with work order data
         Returns:
             Created work order data with _id, createdAt, and updatedAt fields
@@ -44,9 +46,51 @@ class WorkOrderRepo:
             Exception: If an active work order for the vehicleId already exists (partial unique constraint)
         """
 
-        logger.info(f"Creating work order for vehicle: {work_order_data.vehicle_id}")
+        try:
+            # 1. Generate the unique, sequential number
+            wo_number = await self._get_next_work_order_number()
 
-        raise NotImplementedError("create_work_order method not yet implemented")
+            # 2. Create the embedded Quote object from the create data
+            quote_data = Quote(clientObservations=work_order_data.client_observations, diagnostic=None)
+
+            # 3. Create the new WorkOrder document
+            # The model will set defaults for:
+            # - status (AWAITING_DIAGNOSTIC)
+            # - isActive (True)
+            # - createdAt/updatedAt
+            new_work_order = WorkOrder(
+                work_order_number=wo_number,
+                created_by_id=created_by_id,
+                client_id=work_order_data.client_id,
+                vehicle_id=work_order_data.vehicle_id,
+                entry_date=work_order_data.entry_date,
+                quote=quote_data,
+            )
+
+            # 4. Save to the database
+            # This will trigger the unique indexes
+            await new_work_order.save()
+
+            logger.info(f"Successfully created work order {new_work_order.work_order_number}")
+            return new_work_order
+
+        except DuplicateKeyError as e:
+            logger.warning(f"Failed to create work order due to duplicate key: {e.details}")
+
+            if e.details:
+                key_pattern = e.details.get("keyPattern", {})
+                if "vehicleId_1" in key_pattern:
+                    # This is the partial index for RB02
+                    raise Exception("This vehicle already has an active work order. (RB02)")
+                if "workOrderNumber_1" in key_pattern:
+                    # This is the (now very rare) race condition
+                    raise Exception("Work order number concurrency error. Please try again.")
+                # Generic fallback
+            raise Exception(f"Database unique constraint violated: {e.details}")
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while creating work order: {e}", exc_info=True)
+            raise e
 
     async def get_by_id(self, work_order_id: ObjectId) -> WorkOrder | None:
         """
@@ -60,7 +104,22 @@ class WorkOrderRepo:
         """
         logger.info(f"Retrieving work order by ID: {work_order_id}")
 
-        raise NotImplementedError("get_by_id method not yet implemented")
+        try:
+            # Use Beanie's .get() method for a direct lookup by _id
+            work_order = await WorkOrder.get(work_order_id)
+
+            if not work_order:
+                logger.info(f"Work order with ID {work_order_id} not found.")
+                return None
+
+            return work_order
+
+        except Exception as e:
+            # Catch potential database connection errors or other issues
+            logger.error(
+                f"An unexpected error occurred while retrieving work order {work_order_id}: {e}", exc_info=True
+            )
+            raise e  # Re-raise the exception to be handled by the service/API layer
 
     async def get_by_work_order_number(self, work_order_number: str) -> WorkOrder | None:
         """

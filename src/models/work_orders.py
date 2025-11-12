@@ -39,7 +39,7 @@ class Quote(BaseModel):
     """Embedded schema for the work order's quote."""
 
     client_observations: str | None = Field(None, alias="clientObservations")
-    diagnostic: str | None = Field(None)
+    diagnostic: str | None = Field(default=None)
     is_approved: bool = Field(default=False, alias="isApproved")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)

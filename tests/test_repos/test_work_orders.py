@@ -77,7 +77,7 @@ async def sample_work_order(init_db, sample_client, sample_vehicle):
 async def test_create_work_order_success(work_order_repo, sample_client, sample_vehicle):
     """Test creating a new work order successfully."""
 
-    # 1. Simulate a logged-in user's ID
+    # Simulate a logged-in user's ID
     test_user_id = uuid4()
 
     create_data = WorkOrderCreate(
@@ -87,11 +87,7 @@ async def test_create_work_order_success(work_order_repo, sample_client, sample_
         client_observations="Test observation",
     )
 
-    # 2. Pass the user's ID to the method
     new_wo = await work_order_repo.create_work_order(create_data, created_by_id=test_user_id)
-
-    # This will fail with NotImplementedError
-    new_wo = await work_order_repo.create_work_order(create_data)
 
     # --- Assertions (for when implemented) ---
     assert new_wo is not None
@@ -109,10 +105,9 @@ async def test_create_work_order_success(work_order_repo, sample_client, sample_
 async def test_get_work_order_by_id_success(work_order_repo, sample_work_order):
     """Test retrieving a work order by its ObjectId."""
 
-    # This will fail with NotImplementedError
     found_wo = await work_order_repo.get_by_id(sample_work_order.id)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert found_wo is not None
     assert found_wo.id == sample_work_order.id
     assert found_wo.work_order_number == "2025-0001"
@@ -121,10 +116,9 @@ async def test_get_work_order_by_id_success(work_order_repo, sample_work_order):
 async def test_get_work_order_by_id_not_found(work_order_repo):
     """Test that retrieving a non-existent ObjectId returns None."""
 
-    # This will fail with NotImplementedError
     found_wo = await work_order_repo.get_by_id(ObjectId())  # Random, non-existent ID
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert found_wo is None
 
 
@@ -228,5 +222,14 @@ async def test_create_work_order_fails_on_active_vehicle(
         entry_date=datetime.now(UTC),
     )
 
-    # This will fail with NotImplementedError (and later, pymongo.errors.DuplicateKeyError)
-    await work_order_repo.create_work_order(create_data)
+    # Simulate a user ID for this new creation
+    test_user_id = uuid4()
+
+    # pytest.raises CATCH the expected exception
+    # The repository method will raise a generic Exception
+    with pytest.raises(Exception) as exc_info:
+        # Call the method with *both* arguments
+        await work_order_repo.create_work_order(create_data, created_by_id=test_user_id)
+
+    # Assert that the exception message is the one we expect from our repo
+    assert "This vehicle already has an active work order" in str(exc_info.value)
