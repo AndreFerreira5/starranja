@@ -148,7 +148,24 @@ class WorkOrderRepo:
         """
         logger.info(f"Checking for active work order for vehicle: {vehicle_id}")
 
-        raise NotImplementedError("get_active_by_vehicle_id method not yet implemented")
+        try:
+            # Find the document that matches BOTH the vehicleId AND isActive: true
+            work_order = await WorkOrder.find_one(
+                WorkOrder.vehicle_id == vehicle_id,
+                WorkOrder.is_active == True,  # noqa: E712
+            )
+
+            if not work_order:
+                logger.info(f"No active work order found for vehicle: {vehicle_id}")
+                return None
+
+            return work_order
+
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while finding active WO for vehicle {vehicle_id}: {e}", exc_info=True
+            )
+            raise e
 
     async def get_by_vehicle_id(self, vehicle_id: ObjectId) -> list[WorkOrder]:
         """

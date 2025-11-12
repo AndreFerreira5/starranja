@@ -125,10 +125,9 @@ async def test_get_work_order_by_id_not_found(work_order_repo):
 async def test_get_by_work_order_number_success(work_order_repo, sample_work_order):
     """Test retrieving a work order by its human-readable number."""
 
-    # This will fail with NotImplementedError
     found_wo = await work_order_repo.get_by_work_order_number("2025-0001")
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert found_wo is not None
     assert found_wo.id == sample_work_order.id
 
@@ -136,10 +135,9 @@ async def test_get_by_work_order_number_success(work_order_repo, sample_work_ord
 async def test_get_active_by_vehicle_id_success(work_order_repo, sample_work_order, sample_vehicle):
     """Test retrieving the active work order for a vehicle."""
 
-    # This will fail with NotImplementedError
     found_wo = await work_order_repo.get_active_by_vehicle_id(sample_vehicle.id)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions  ---
     assert found_wo is not None
     assert found_wo.id == sample_work_order.id
     assert found_wo.is_active is True
