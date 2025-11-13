@@ -70,12 +70,11 @@ jobs:
           IMAGE_NAME: ${{ steps.image-name.outputs.IMAGE_NAME }}
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=no \
               ${{ secrets.DEPLOY_SERVER_USER }}@${{ secrets.DEPLOY_SERVER_HOST }} \
-              bash -s << 'ENDSSH'
+              bash -s << ENDSSH
             set -e
     
-            echo "Deploying to MLFlow Deploy Server..."
+            echo "Deploying..."
     
             # log in to registry
             echo ${{ secrets.GITHUB_TOKEN }} | \
@@ -87,7 +86,7 @@ jobs:
             docker rm starranja-backend 2>/dev/null || true
             docker run -d --name starranja-backend \
               --restart on-failure \
-              -p 3000:3000
+              -p 3000:3000 \
               ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-backend:latest
     
             echo "Deployment successful!"
