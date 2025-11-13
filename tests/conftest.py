@@ -25,12 +25,12 @@ async def init_db():
     """
 
     # 1. Get the test database URL from the environment
-    test_db_url = os.getenv("TESTING_MONGO_DB_CONN_STR")
+    test_db_url = os.getenv("MONGO_TEST_DATABASE_URL")
 
     # 2. Add a guard clause to fail fast if the .env file is missing
     if not test_db_url:
         raise ValueError(
-            "TESTING_MONGO_DB_CONN_STR is not set. Ensure you have a .env file and pytest-dotenv is installed."
+            "MONGO_TEST_DATABASE_URL is not set. Ensure you have a .env file and pytest-dotenv is installed."
         )
 
     # 3. Create the client
