@@ -51,4 +51,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run pytest
+        env:
+          AUTH__PASETO_SECRET_KEY: ${{ secrets.PROD_AUTH_DB_CONN_STR }}
+          TEST_AUTH_DATABASE_URL: ${{ secrets.TESTING_AUTH_DB_CONN_STR }}
         run: uv run pytest
