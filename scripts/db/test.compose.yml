@@ -15,7 +15,7 @@ services:
     ports:
       - 27016:27017
     environment:
-      - FERRETDB_POSTGRESQL_URL=postgres://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@postgres:5432/postgres
+      - FERRETDB_POSTGRESQL_URL=postgres://${MONGO_DB_USER}:${MONGO_DB_PASSWORD}@postgres-test:5432/postgres
 
   postgres-auth-test:
     image: postgres:18
