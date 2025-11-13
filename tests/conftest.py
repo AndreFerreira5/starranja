@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import uuid
 from collections.abc import AsyncGenerator
 from secrets import token_hex
 
@@ -41,7 +42,7 @@ async def test_engine():
         raise ValueError("AUTH_TEST_DATABASE_URL not found in environment. Please set it in .env.test file.")
 
     engine = create_async_engine(
-        test_db_url,
+        f"{test_db_url}/{uuid.uuid4().hex}",
         poolclass=NullPool,
         echo=False,
         connect_args={
