@@ -71,10 +71,10 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key \
               ${{ secrets.DEPLOY_SERVER_USER }}@${{ secrets.DEPLOY_SERVER_HOST }} \
-              bash -s << 'ENDSSH'
+              bash -s << ENDSSH
             set -e
     
-            echo "Deploying to MLFlow Deploy Server..."
+            echo "Deploying..."
     
             # log in to registry
             echo ${{ secrets.GITHUB_TOKEN }} | \
@@ -91,4 +91,4 @@ jobs:
     
             echo "Deployment successful!"
     
-          ENDSSH
+          'ENDSSH'
