@@ -5,6 +5,8 @@ import uuid
 from collections.abc import AsyncGenerator
 from secrets import token_hex
 
+import asyncpg
+
 # Configure Windows event loop FIRST
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -37,12 +39,22 @@ async def test_engine():
     Create a test database engine connected to the remote test database.
     Creates tables ONCE at the start of test session.
     """
-    test_db_url = os.getenv("AUTH_TEST_DATABASE_URL")
-    if not test_db_url:
+    test_base_db_url = os.getenv("AUTH_TEST_DATABASE_URL")
+    if not test_base_db_url:
         raise ValueError("AUTH_TEST_DATABASE_URL not found in environment. Please set it in .env.test file.")
 
+    unique_db_name = uuid.uuid4().hex
+
+    admin_url = f"{test_base_db_url}/postgres"
+    admin_conn = await asyncpg.connect(admin_url)
+    try:
+        await admin_conn.execute(f'CREATE DATABASE "{unique_db_name}"')
+    finally:
+        await admin_conn.close()
+
+    test_db_url = f"{test_base_db_url}/{unique_db_name}"
     engine = create_async_engine(
-        f"{test_db_url}/{uuid.uuid4().hex}",
+        test_db_url,
         poolclass=NullPool,
         echo=False,
         connect_args={
@@ -73,11 +85,13 @@ async def test_engine():
 
     yield engine
 
-    # Teardown: Drop all tables after ALL tests complete
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
     await engine.dispose()
+    admin_conn = await asyncpg.connect(admin_url)
+    try:
+        # force drop to terminate any remaining connections
+        await admin_conn.execute(f'DROP DATABASE IF EXISTS "{unique_db_name}" WITH (FORCE)')
+    finally:
+        await admin_conn.close()
 
 
 @pytest_asyncio.fixture(scope="function")
