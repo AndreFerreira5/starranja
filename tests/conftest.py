@@ -45,7 +45,8 @@ async def test_engine():
 
     unique_db_name = uuid.uuid4().hex
 
-    admin_url = f"{test_base_db_url}/postgres"
+    asyncpg_base_url = test_base_db_url.replace("postgresql+asyncpg://", "postgresql://")
+    admin_url = f"{asyncpg_base_url}/postgres"
     admin_conn = await asyncpg.connect(admin_url)
     try:
         await admin_conn.execute(f'CREATE DATABASE "{unique_db_name}"')
