@@ -1,8 +1,11 @@
 import asyncio
 import os
 import sys
+import uuid
 from collections.abc import AsyncGenerator
 from secrets import token_hex
+
+import asyncpg
 
 # Configure Windows event loop FIRST
 if sys.platform == "win32":
@@ -36,18 +39,21 @@ async def test_engine():
     Create a test database engine connected to the remote test database.
     Creates tables ONCE at the start of test session.
     """
-    test_db_url = os.getenv("AUTH_TEST_DATABASE_URL")
-    if not test_db_url:
+    test_base_db_url = os.getenv("AUTH_TEST_DATABASE_URL")
+    if not test_base_db_url:
         raise ValueError("AUTH_TEST_DATABASE_URL not found in environment. Please set it in .env.test file.")
 
-    # Safety check: Ensure we're not using the production database URL
-    prod_db_url = os.getenv("AUTH_DATABASE_URL")
-    if prod_db_url and test_db_url == prod_db_url:
-        raise ValueError(
-            "AUTH_TEST_DATABASE_URL must be different from AUTH_DATABASE_URL to prevent accidental production data "
-            "deletion. Please configure separate test and production database URLs."
-        )
+    unique_db_name = uuid.uuid4().hex
 
+    asyncpg_base_url = test_base_db_url.replace("postgresql+asyncpg://", "postgresql://")
+    admin_url = f"{asyncpg_base_url}/postgres"
+    admin_conn = await asyncpg.connect(admin_url)
+    try:
+        await admin_conn.execute(f'CREATE DATABASE "{unique_db_name}"')
+    finally:
+        await admin_conn.close()
+
+    test_db_url = f"{test_base_db_url}/{unique_db_name}"
     engine = create_async_engine(
         test_db_url,
         poolclass=NullPool,
@@ -80,11 +86,13 @@ async def test_engine():
 
     yield engine
 
-    # Teardown: Drop all tables after ALL tests complete
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-
     await engine.dispose()
+    admin_conn = await asyncpg.connect(admin_url)
+    try:
+        # force drop to terminate any remaining connections
+        await admin_conn.execute(f'DROP DATABASE IF EXISTS "{unique_db_name}" WITH (FORCE)')
+    finally:
+        await admin_conn.close()
 
 
 @pytest_asyncio.fixture(scope="function")
