@@ -1,4 +1,5 @@
 import os
+import uuid
 from secrets import token_hex
 
 import motor.motor_asyncio
@@ -25,22 +26,19 @@ async def init_db():
     """
 
     # 1. Get the test database URL from the environment
-    test_db_url = os.getenv("MONGO_TEST_DATABASE_URL")
+    test_db_base_url = os.getenv("MONGO_TEST_DATABASE_URL")
 
     # 2. Add a guard clause to fail fast if the .env file is missing
-    if not test_db_url:
+    if not test_db_base_url:
         raise ValueError(
             "MONGO_TEST_DATABASE_URL is not set. Ensure you have a .env file and pytest-dotenv is installed."
         )
 
+    db_name = uuid.uuid4().hex + uuid.uuid1().hex
+    test_db_url = f"{test_db_base_url}/{db_name}"
+
     # 3. Create the client
     client = motor.motor_asyncio.AsyncIOMotorClient(test_db_url)
-
-    # 4. Get the database name directly from the connection string
-    # This is safer than hardcoding it
-    db_name = client.get_default_database().name
-    if not db_name or db_name == "admin":
-        raise ValueError("Your TESTING_MONGO_DB_CONN_STR must include a database name (e.g., .../starranja_test_db)")
 
     db = client[db_name]
 
