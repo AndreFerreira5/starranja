@@ -40,6 +40,13 @@ async def test_engine():
     if not test_db_url:
         raise ValueError("AUTH_TEST_DATABASE_URL not found in environment. Please set it in .env.test file.")
 
+    # Safety check: Ensure we're using a test database
+    if "_test" not in test_db_url.lower() and "test" not in test_db_url.lower():
+        raise ValueError(
+            "Database URL must contain 'test' or '_test' to prevent accidental production data deletion. "
+            f"Got: {test_db_url.split('@')[0]}@<redacted>"
+        )
+
     engine = create_async_engine(
         test_db_url,
         poolclass=NullPool,

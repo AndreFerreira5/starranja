@@ -31,7 +31,7 @@ class TestLoginEndpoint:
 
         # Should have token type
         assert "token_type" in data
-        assert data["token_type"] in ["Bearer", "bearer", "Paseto"]
+        assert data["token_type"] == "Bearer"
 
         # Should NOT expose password
         assert "password" not in data

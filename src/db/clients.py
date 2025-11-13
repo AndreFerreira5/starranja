@@ -49,21 +49,21 @@ async def get_role_by_id(db: AsyncSession, role_id: int) -> Role | None:
     return result.scalar_one_or_none()
 
 
-async def create_role(db: AsyncSession, role_name: str, description: str | None = None) -> Role:
+async def create_role(db: AsyncSession, role_name: str) -> Role:
     """Create a new role"""
-    role = Role(name=role_name, description=description)
+    role = Role(name=role_name)
     db.add(role)
     await db.flush()
     await db.refresh(role)
     return role
 
 
-async def get_or_create_role(db: AsyncSession, role_name: str, description: str | None = None) -> Role:
+async def get_or_create_role(db: AsyncSession, role_name: str) -> Role:
     """Get role by name or create if it doesn't exist"""
     role = await get_role_by_name(db, role_name)
 
     if not role:
-        role = await create_role(db, role_name, description)
+        role = await create_role(db, role_name)
 
     return role
 

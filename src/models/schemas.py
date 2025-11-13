@@ -12,7 +12,7 @@ class LoginRequest(BaseModel):
 
 class AuthResponse(BaseModel):
     access_token: str
-    token_type: str = "Paseto"
+    token_type: str = "Bearer"
 
 
 class UserRole(str, Enum):
