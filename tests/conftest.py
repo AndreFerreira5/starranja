@@ -44,6 +44,8 @@ async def init_db():
 
     db = client[db_name]
 
+    await client.drop_database(db_name)
+
     # 5. Initialize Beanie with all your document models
     await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice])
 
@@ -52,5 +54,7 @@ async def init_db():
         yield db
     finally:
         # 7. Teardown: Drop the entire test database after the test is done
-        await client.drop_database(db_name)
-        client.close()
+        try:
+            await client.drop_database(db_name)
+        finally:
+            client.close()
