@@ -92,7 +92,7 @@ jobs:
             docker rm starranja-backend 2>/dev/null || true
             docker run -d --name starranja-backend \
               --restart on-failure \
-              -p 3000:3000
+              -p 3000:3000 \
               ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-backend:latest
     
             echo "Deployment successful!"
