@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from src.db.connection import auth_db_connect, auth_db_disconnect
 from src.logging_config import configure_logging
-from src.routes import auth
+from src.routes import auth, users
 
 # configure logging globally
 configure_logging()
@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
 
 
 @app.get("/ping")

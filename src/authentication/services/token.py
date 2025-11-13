@@ -49,7 +49,6 @@ class TokenService:
     def _initialize_key(self) -> None:
         """
         Initialize the PASETO symmetric key from configuration.
-
         The key must be a 32-byte (256-bit) key for v4.local tokens.
         Validates key length and format before creation.
 
@@ -58,21 +57,30 @@ class TokenService:
         """
         try:
             key_material = settings.auth.PASETO_SECRET_KEY
-            print("KEY: ", key_material)
+
+            # Strip any whitespace
+            key_material = key_material.strip()
 
             # Validate key length (must be 32 bytes for v4.local)
             if len(key_material) != 64:  # 32 bytes = 64 hex characters
-                raise ValueError("PASETO_SECRET_KEY must be exactly 32 bytes (64 hex characters)")
+                raise ValueError(
+                    f"PASETO_SECRET_KEY must be exactly 32 bytes (64 hex characters), "
+                    f"got {len(key_material)} characters"
+                )
+
+            # Validate hex format
+            try:
+                key_bytes = bytes.fromhex(key_material)
+            except ValueError as hex_err:
+                raise ValueError(f"PASETO_SECRET_KEY must be valid hexadecimal: {hex_err}")
 
             # Create the symmetric key for v4.local
-            self._key = pyseto.Key.new(version=4, purpose="local", key=bytes.fromhex(key_material))
-
+            self._key = pyseto.Key.new(version=4, purpose="local", key=key_bytes)
             logger.info("TokenService initialized with PASETO v4.local key")
 
         except ValueError as e:
             logger.error(f"Invalid PASETO key configuration: {str(e)}")
             raise TokenGenerationError(str(e), original_error=e)
-
         except Exception as e:
             logger.error(f"Failed to initialize TokenService: {str(e)}")
             raise TokenGenerationError("Failed to initialize token service", original_error=e)
@@ -218,11 +226,9 @@ class TokenService:
         except VerifyError as e:
             # Handle specific pyseto VerifyError cases
             error_msg = str(e).lower()
-
             if "expired" in error_msg:
                 logger.warning("Token has expired")
                 raise TokenExpiredError("Token has expired")
-
             if "has not been activated yet" in error_msg or "not yet valid" in error_msg:
                 logger.warning(f"Token not yet valid: {str(e)}")
                 raise InvalidTokenError("Token not yet valid (used before nbf time)")
@@ -258,7 +264,6 @@ class TokenService:
             InvalidTokenError: If payload structure is invalid
         """
         required_fields = ["user_id", "roles", "iat", "exp", "nbf"]
-
         for field in required_fields:
             if field not in payload:
                 raise InvalidTokenError(f"Token payload missing required field: {field}")
@@ -299,7 +304,6 @@ class TokenService:
 
         except TokenExpiredError:
             raise
-
         except Exception as e:
             logger.warning(f"Invalid expiration format in token: {str(e)}")
             raise InvalidTokenError("Invalid token expiration format")
@@ -329,7 +333,6 @@ class TokenService:
 
         except InvalidTokenError:
             raise
-
         except Exception as e:
             logger.warning(f"Invalid not-before format in token: {str(e)}")
             raise InvalidTokenError("Invalid token not-before format")
@@ -363,8 +366,19 @@ class TokenService:
             return None
 
 
-# Module-level convenience functions
-_token_service = TokenService()
+# Module-level singleton instance (lazy initialization)
+_token_service = None
+
+
+def _get_token_service() -> TokenService:
+    """
+    Get or create the TokenService singleton instance.
+    This allows lazy initialization after environment is configured.
+    """
+    global _token_service
+    if _token_service is None:
+        _token_service = TokenService()
+    return _token_service
 
 
 def generate_token(user_id: str, roles: list[str], expires_in_minutes: int | None = None) -> str:
@@ -379,7 +393,8 @@ def generate_token(user_id: str, roles: list[str], expires_in_minutes: int | Non
     Returns:
         str: The encoded PASETO token
     """
-    return _token_service.generate_token(user_id, roles, expires_in_minutes)
+    service = _get_token_service()
+    return service.generate_token(user_id, roles, expires_in_minutes)
 
 
 def verify_token(token: str) -> dict[str, Any]:
@@ -392,4 +407,5 @@ def verify_token(token: str) -> dict[str, Any]:
     Returns:
         dict: The decoded token payload
     """
-    return _token_service.verify_token(token)
+    service = _get_token_service()
+    return service.verify_token(token)

@@ -19,7 +19,7 @@ dependencies = [
     "pymongo>=4.15.3",
     "bson>=0.5.10",
     "email-validator>=2.1.0",
-    "asyncpg>=0.29.0"
+    "asyncpg>=0.29.0",
 ]
 
 [dependency-groups]
@@ -41,19 +41,46 @@ target-version = "py313"
 select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.pytest.ini_options]
+# Asyncio mode for pytest-asyncio
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+pythonpath = "src"
+
+# Environment
+env_files = [".env.test", ".env"]
+
+# Coverage
 addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
     "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=xml",
     "--cov-report=html",
     "--cov-branch",
 ]
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-pythonpath = "src"
-env_files = [".env"]
+
+# Markers
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+# PostgreSQL configuration for pytest-postgresql
+postgresql_port = 5555
+postgresql_host = "localhost"
+postgresql_user = "pytest_user"
+postgresql_password = "pytest_pass"
+
+# Logging (optional)
+log_cli = false
+log_cli_level = "INFO"
 
 [tool.coverage.report]
 exclude_lines = [
@@ -62,6 +89,8 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
 ]
 
 [build-system]
@@ -75,3 +104,10 @@ packages = ["src"]
 python_version = "3.13"
 warn_unused_configs = true
 explicit_package_bases = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_optional = true

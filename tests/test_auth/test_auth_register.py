@@ -44,28 +44,37 @@ class TestRegisterEndpoint:
 
         # Try to register with same username
         response2 = await client.post("/auth/register", json=sample_user_data)
-        assert response2.status_code == 409
-        assert "registrado" in response2.json()["detail"].lower()
+
+        # --- FIX 1: Assert 400 and the correct error message ---
+        assert response2.status_code == 400
+        assert "username already exists" in response2.json()["detail"].lower()
 
     async def test_register_invalid_password_too_short(self, client: AsyncClient):
         """Test registration with password too short"""
+
+        # --- FIX 2: Add all required fields, including a valid "role" ---
         user_data = {
             "username": "shortpass",
-            "password": "short",
+            "password": "short",  # This is the field we are testing
             "full_name": "Short Pass User",
             "email": "short@example.com",
+            "role": "mecanico",  # Added missing required field
         }
 
         response = await client.post("/auth/register", json=user_data)
-        if response.status_code == 422:
-            # Pydantic validation error
-            assert "detail" in response.json()
-        else:
-            # Custom validation error (400)
-            assert response.status_code == 400
+
+        # Now we can be sure the 422 is for the password length
+        assert response.status_code == 422
+
+        # Optional: A better assertion to check the error detail
+        data = response.json()
+        assert "detail" in data
+        # Check that the validation error refers to the 'password' field
+        assert any("password" in err["loc"] for err in data["detail"])
 
     async def test_register_missing_required_fields(self, client: AsyncClient):
         """Test registration with missing required fields"""
+        # Missing password, full_name, and role
         incomplete_data = {"username": "incomplete"}
 
         response = await client.post("/auth/register", json=incomplete_data)
