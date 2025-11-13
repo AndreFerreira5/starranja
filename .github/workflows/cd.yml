@@ -70,7 +70,6 @@ jobs:
           IMAGE_NAME: ${{ steps.image-name.outputs.IMAGE_NAME }}
         run: |
           ssh -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=no \
               ${{ secrets.DEPLOY_SERVER_USER }}@${{ secrets.DEPLOY_SERVER_HOST }} \
               bash -s << 'ENDSSH'
             set -e
