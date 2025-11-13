@@ -69,7 +69,7 @@ class WorkOrderRepo:
 
             # 4. Save to the database
             # This will trigger the unique indexes
-            await new_work_order.save()
+            await new_work_order.insert()
 
             logger.info(f"Successfully created work order {new_work_order.work_order_number}")
             return new_work_order
@@ -79,10 +79,10 @@ class WorkOrderRepo:
 
             if e.details:
                 key_pattern = e.details.get("keyPattern", {})
-                if "vehicleId_1" in key_pattern:
+                if "vehicleId" in key_pattern:
                     # This is the partial index for RB02
                     raise Exception("This vehicle already has an active work order. (RB02)")
-                if "workOrderNumber_1" in key_pattern:
+                if "workOrderNumber" in key_pattern:
                     # This is the (now very rare) race condition
                     raise Exception("Work order number concurrency error. Please try again.")
                 # Generic fallback
@@ -133,7 +133,19 @@ class WorkOrderRepo:
         """
         logger.info(f"Retrieving work order by number: {work_order_number}")
 
-        raise NotImplementedError("get_by_work_order_number method not yet implemented")
+        try:
+            # find_one to query by the work_order_number field
+            work_order = await WorkOrder.find_one(WorkOrder.work_order_number == work_order_number)
+
+            if not work_order:
+                logger.info(f"Work order with number {work_order_number} not found.")
+                return None
+
+            return work_order
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while retrieving WO {work_order_number}: {e}", exc_info=True)
+            raise e
 
     async def get_active_by_vehicle_id(self, vehicle_id: ObjectId) -> WorkOrder | None:
         """
@@ -179,7 +191,18 @@ class WorkOrderRepo:
         """
         logger.info(f"Retrieving all work orders for vehicle: {vehicle_id}")
 
-        raise NotImplementedError("get_by_vehicle_id method not yet implemented")
+        try:
+            # .find() to get a query builder for all matching documents,
+            # .to_list() to execute the query and return a list.
+            work_orders = await WorkOrder.find(WorkOrder.vehicle_id == vehicle_id).to_list()
+
+            return work_orders
+
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while finding active WO for vehicle {vehicle_id}: {e}", exc_info=True
+            )
+            raise e
 
     async def get_by_client_id(self, client_id: ObjectId) -> list[WorkOrder]:
         """
@@ -193,7 +216,18 @@ class WorkOrderRepo:
         """
         logger.info(f"Retrieving work orders for client: {client_id}")
 
-        raise NotImplementedError("get_by_client_id method not yet implemented")
+        try:
+            # .find() to get a query builder for all matching documents,
+            # .to_list() to execute the query.
+            work_orders = await WorkOrder.find(WorkOrder.client_id == client_id).to_list()
+
+            return work_orders
+
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while retrieving WOs for client {client_id}: {e}", exc_info=True
+            )
+            raise e
 
     async def update(self, work_order_id: ObjectId, update_data: WorkOrderUpdate) -> WorkOrder | None:
         """
@@ -208,7 +242,33 @@ class WorkOrderRepo:
         """
         logger.info(f"Updating work order: {work_order_id}")
 
-        raise NotImplementedError("update method not yet implemented")
+        try:
+            # 1. Find the document by its ID
+            work_order = await WorkOrder.get(work_order_id)
+
+            if not work_order:
+                logger.warning(f"Work order {work_order_id} not found for update.")
+                return None
+
+            # 2. Convert the Pydantic update model to a dictionary.
+            #    exclude_unset=True is crucial: it only includes fields that
+            #    were explicitly set in the update_data object.
+            #    by_alias=True ensures we use DB field names (e.g., "isActive")
+            update_dict = update_data.model_dump(by_alias=True, exclude_unset=True)
+
+            # 3. Apply the changes to the document in memory
+            await work_order.set(update_dict)
+
+            # 4. Save the document to the database.
+            #    This will also trigger the save() hook, updating `updated_at`.
+            await work_order.save()
+
+            logger.info(f"Successfully updated work order: {work_order_id}")
+            return work_order
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while updating work order {work_order_id}: {e}", exc_info=True)
+            raise e
 
     async def delete(self, work_order_id: ObjectId) -> bool:
         """
@@ -223,4 +283,21 @@ class WorkOrderRepo:
         """
         logger.info(f"Deleting work order: {work_order_id}")
 
-        raise NotImplementedError("delete method not yet implemented")
+        try:
+            # 1. Find the document by its ID using Beanie's .get()
+            work_order = await WorkOrder.get(work_order_id)
+
+            # 2. If the document doesn't exist, return False
+            if not work_order:
+                logger.warning(f"Work order {work_order_id} not found for deletion.")
+                return False
+
+            # 3. If the document exists, delete it
+            await work_order.delete()
+
+            logger.info(f"Successfully deleted work order: {work_order_id}")
+            return True
+
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while deleting work order {work_order_id}: {e}", exc_info=True)
+            raise e

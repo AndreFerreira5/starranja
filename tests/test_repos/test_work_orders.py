@@ -146,10 +146,9 @@ async def test_get_active_by_vehicle_id_success(work_order_repo, sample_work_ord
 async def test_get_all_work_orders_by_vehicle_id(work_order_repo, sample_work_order, sample_vehicle):
     """Test retrieving all work orders for a vehicle."""
 
-    # This will fail with NotImplementedError
     orders = await work_order_repo.get_by_vehicle_id(sample_vehicle.id)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert isinstance(orders, list)
     assert len(orders) == 1
     assert orders[0].id == sample_work_order.id
@@ -158,10 +157,9 @@ async def test_get_all_work_orders_by_vehicle_id(work_order_repo, sample_work_or
 async def test_get_work_orders_by_client_id(work_order_repo, sample_work_order, sample_client):
     """Test retrieving all work orders for a client."""
 
-    # This will fail with NotImplementedError
     orders = await work_order_repo.get_by_client_id(sample_client.id)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert isinstance(orders, list)
     assert len(orders) == 1
     assert orders[0].id == sample_work_order.id
@@ -173,10 +171,9 @@ async def test_update_work_order_success(work_order_repo, sample_work_order):
         status=WorkOrderStatus.AWAITING_APPROVAL, quote=Quote(diagnostic="Needs new flux capacitor.")
     )
 
-    # This will fail with NotImplementedError
     updated_wo = await work_order_repo.update(sample_work_order.id, update_data)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert updated_wo is not None
     assert updated_wo.id == sample_work_order.id
     assert updated_wo.status == WorkOrderStatus.AWAITING_APPROVAL
@@ -187,10 +184,9 @@ async def test_update_work_order_success(work_order_repo, sample_work_order):
 async def test_delete_work_order_success(work_order_repo, sample_work_order):
     """Test successfully deleting a work order."""
 
-    # This will fail with NotImplementedError
     was_deleted = await work_order_repo.delete(sample_work_order.id)
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions ---
     assert was_deleted is True
 
     # Verify it's gone from the DB
@@ -201,10 +197,9 @@ async def test_delete_work_order_success(work_order_repo, sample_work_order):
 async def test_delete_work_order_not_found(work_order_repo):
     """Test that deleting a non-existent ID returns False."""
 
-    # This will fail with NotImplementedError
     was_deleted = await work_order_repo.delete(ObjectId())
 
-    # --- Assertions (for when implemented) ---
+    # --- Assertions  ---
     assert was_deleted is False
 
 

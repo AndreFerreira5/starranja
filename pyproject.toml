@@ -54,6 +54,14 @@ python_functions = ["test_*"]
 pythonpath = "src"
 env_files = [".env"]
 
+# Silence Pydantic v2.11+ deprecation warnings.
+# These (PydanticDeprecatedSince211) are triggered *inside* our
+# dependencies (beanie, lazy_model) and not in our own app code.
+# This filter can be removed if/when beanie releases an update.
+filterwarnings = [
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated:DeprecationWarning",
+]
+
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
