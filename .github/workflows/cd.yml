@@ -36,5 +36,5 @@ jobs:
           file: Dockerfile
           push: true
           tags: |
-            ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-starranja-backend:latest
-            ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-starranja-backend:${{ github.sha }}
+            ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-backend:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-backend:${{ github.sha }}
