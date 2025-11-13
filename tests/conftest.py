@@ -23,7 +23,7 @@ async def init_db():
     Fixture to initialize a clean test database for each test function.
     """
     # Use a test database URL (e.g., from an env var or default to local)
-    test_db_url = os.getenv("TEST_MONGO_URL", "mongodb://localhost:27017/starranja_test_db")
+    test_db_url = os.getenv("MONGO_TEST_DATABASE_URL")
     test_db_name = "starranja_test_db"  # Make sure this matches the URL
 
     # 1. Create a fresh client and database
