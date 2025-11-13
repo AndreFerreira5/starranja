@@ -79,13 +79,19 @@ class WorkOrderRepo:
 
             if e.details:
                 key_pattern = e.details.get("keyPattern", {})
-                if "vehicleId" in key_pattern:
-                    # This is the partial index for RB02
+
+                errmsg = e.details.get("errmsg", "")
+
+                # Check both keyPattern and errmsg for vehicleId
+                if "vehicleId" in key_pattern or "vehicleId" in errmsg:
                     raise Exception("This vehicle already has an active work order. (RB02)")
-                if "workOrderNumber" in key_pattern:
-                    # This is the (now very rare) race condition
+
+                # Check both keyPattern and errmsg for workOrderNumber
+                if "workOrderNumber" in key_pattern or "workOrderNumber" in errmsg:
                     raise Exception("Work order number concurrency error. Please try again.")
-                # Generic fallback
+
+            # Generic fallback
+
             raise Exception(f"Database unique constraint violated: {e.details}")
 
         except Exception as e:

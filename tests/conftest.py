@@ -21,30 +21,36 @@ from src.models.work_orders import WorkOrder
 async def init_db():
     """
     Fixture to initialize a clean test database for each test function.
+    It reads the database URL from the MONGO_TEST_DATABASE_URL env var.
     """
-    # Use a test database URL (e.g., from an env var or default to local)
+
+    # 1. Get the test database URL from the environment
     test_db_url = os.getenv("MONGO_TEST_DATABASE_URL")
-    test_db_name = "starranja_test_db"  # Make sure this matches the URL
 
-    # 1. Create a fresh client and database
+    # 2. Add a guard clause to fail fast if the .env file is missing
+    if not test_db_url:
+        raise ValueError(
+            "MONGO_TEST_DATABASE_URL is not set. Ensure you have a .env file and pytest-dotenv is installed."
+        )
+
+    # 3. Create the client
     client = motor.motor_asyncio.AsyncIOMotorClient(test_db_url)
-    db = client[test_db_name]
 
-    # 2. Initialize Beanie with all your document models
-    await init_beanie(
-        database=db,
-        document_models=[
-            Client,
-            Vehicle,
-            WorkOrder,
-            Invoice,
-        ],
-    )
+    # 4. Get the database name directly from the connection string
+    # This is safer than hardcoding it
+    db_name = client.get_default_database().name
+    if not db_name or db_name == "admin":
+        raise ValueError("Your MONGO_TEST_DATABASE_URL must include a database name (e.g., .../starranja_test_db)")
+
+    db = client[db_name]
+
+    # 5. Initialize Beanie with all your document models
+    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice])
 
     try:
-        # 3. Yield the database for the test to use
+        # 6. Yield the database for the test to use
         yield db
     finally:
-        # 4. Teardown: Drop the entire test database after the test is done
-        await client.drop_database(test_db_name)
+        # 7. Teardown: Drop the entire test database after the test is done
+        await client.drop_database(db_name)
         client.close()
