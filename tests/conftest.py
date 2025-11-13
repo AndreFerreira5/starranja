@@ -34,7 +34,7 @@ async def init_db():
             "MONGO_TEST_DATABASE_URL is not set. Ensure you have a .env file and pytest-dotenv is installed."
         )
 
-    db_name = uuid.uuid4().hex + uuid.uuid1().hex
+    db_name = uuid.uuid4().hex
     test_db_url = f"{test_db_base_url}/{db_name}"
 
     # 3. Create the client
