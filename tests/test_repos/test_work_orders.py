@@ -4,6 +4,8 @@ from uuid import uuid4
 import pytest
 from bson import ObjectId
 
+from src.exceptions.work_orders import ActiveWorkOrderExistsError
+
 # Import  models
 from src.models.client import Client
 from src.models.vehicle import Vehicle
@@ -220,9 +222,10 @@ async def test_create_work_order_fails_on_active_vehicle(
 
     # pytest.raises CATCH the expected exception
     # The repository method will raise a generic Exception
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(ActiveWorkOrderExistsError) as exc_info:
         # Call the method with *both* arguments
         await work_order_repo.create_work_order(create_data, created_by_id=test_user_id)
 
-    # Assert that the exception message is the one we expect from our repo
-    assert "This vehicle already has an active work order" in str(exc_info.value)
+    # Verify the exception details
+    assert exc_info.value.vehicle_id == str(sample_vehicle.id)
+    assert "RB02" in str(exc_info.value)
