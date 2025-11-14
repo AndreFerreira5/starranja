@@ -32,13 +32,9 @@ class Client(Document):
     class Settings:
         name = "clients"  # collection name
 
-    # keep updated_at fresh on save/replace
-    async def save(self, *args, **kwargs):
-        self.updated_at = datetime.now(UTC)
-        return await super().save(*args, **kwargs)
-
-    @before_event([Insert, Save, Replace])
-    def _touch_updated_at(self):
+    @before_event([Save, Replace])
+    def _update_timestamps(self):
+        """Update the updated_at timestamp"""
         self.updated_at = datetime.now(UTC)
 
 

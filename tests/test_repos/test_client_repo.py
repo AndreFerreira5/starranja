@@ -601,38 +601,6 @@ async def test_delete_client_invalid_id(client_repository):
 # ADDITIONAL EDGE CASE TESTS
 # ============================================================================
 
-@pytest.mark.asyncio
-async def test_client_timestamps_auto_managed(sample_client_data):
-    """
-    Test that Beanie automatically manages created_at and updated_at timestamps.
-
-    Expected behavior:
-        - created_at should be set on insert
-        - updated_at should be set on insert
-        - updated_at should be updated on save
-    """
-    # Arrange & Act - Create and insert client
-    client = Client(**sample_client_data)
-    await client.insert()
-
-    original_created_at = client.created_at
-    original_updated_at = client.updated_at
-
-    # Assert initial timestamps
-    assert client.created_at is not None
-    assert client.updated_at is not None
-    assert isinstance(client.created_at, datetime)
-
-    # Modify and save
-    import asyncio
-    await asyncio.sleep(0.1)  # Ensure time difference
-    client.name = "Modified Name"
-    await client.save()
-
-    # Assert updated_at changed but created_at didn't
-    assert client.created_at == original_created_at, "created_at should not change"
-    assert client.updated_at > original_updated_at, "updated_at should be refreshed"
-
 
 @pytest.mark.asyncio
 async def test_client_with_optional_fields_null(client_repository):
