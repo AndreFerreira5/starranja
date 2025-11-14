@@ -1,4 +1,5 @@
 import logging
+from typing import List
 
 from bson import ObjectId
 
@@ -41,6 +42,26 @@ class ClientRepo:
         logger.info(f"Retrieving client by ID: {client_id}")
 
         raise NotImplementedError("get_by_id method not yet implemented")
+
+    async def get_all_clients(self) -> List[Client]:
+        """
+        Retrieve all clients from the database.
+
+        Returns:
+            List of all Client documents
+        """
+        logger.info("Retrieving all clients")
+
+        try:
+            # Use Beanie's find_all method
+            clients = await Client.find_all().to_list()
+
+            logger.info(f"Found {len(clients)} clients")
+            return clients
+
+        except Exception as e:
+            logger.error(f"Error retrieving all clients: {str(e)}")
+            raise
 
     async def get_by_nif(self, nif: str) -> Client | None:
         """
