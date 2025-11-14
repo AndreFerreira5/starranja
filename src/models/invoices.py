@@ -26,7 +26,7 @@ else:
             unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
             iva_rate: Decimal128
             total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
-            model_config = ConfigDict(populate_by_name=True)
+            model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # --- Enums  ---
@@ -46,7 +46,7 @@ class InvoiceAddress(BaseModel):
     city: str | None = None
     zip_code: str | None = Field(None, alias="zipCode")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class InvoiceClientDetails(BaseModel):
@@ -56,7 +56,7 @@ class InvoiceClientDetails(BaseModel):
     nif: str
     address: InvoiceAddress
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class InvoiceVehicleDetails(BaseModel):
@@ -66,7 +66,7 @@ class InvoiceVehicleDetails(BaseModel):
     brand: str
     model: str
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # ---- Beanie Document (DB model) ----
@@ -131,7 +131,7 @@ class InvoiceCreate(BaseModel):
 
     work_order_id: ObjectId = Field(..., alias="workOrderId")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class InvoiceUpdate(BaseModel):
@@ -142,7 +142,7 @@ class InvoiceUpdate(BaseModel):
 
     status: InvoiceStatus
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class InvoiceOut(BaseModel):
