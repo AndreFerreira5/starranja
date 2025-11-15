@@ -1,19 +1,22 @@
 import os
+import uuid
 from secrets import token_hex
 
-from src.config import settings
-import pytest_asyncio
 import motor.motor_asyncio
-import uuid
+import pytest_asyncio
 from beanie import init_beanie
+
+from src.config import settings
+from src.models.appointments import Appointment
 from src.models.client import Client
+from src.models.invoices import Invoice
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
-from src.models.invoices import Invoice
-import uuid
 
 if "PASETO_SECRET_KEY" not in os.environ:
     settings.auth.PASETO_SECRET_KEY = token_hex(32)
+
+
 @pytest_asyncio.fixture(scope="function")
 async def init_db():
     """
@@ -42,7 +45,7 @@ async def init_db():
     await client.drop_database(db_name)
 
     # 5. Initialize Beanie with all your document models
-    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice])
+    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice, Appointment])
 
     try:
         # 6. Yield the database for the test to use

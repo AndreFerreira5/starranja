@@ -42,7 +42,9 @@ class Quote(BaseModel):
     diagnostic: str | None = Field(None)
     is_approved: bool = Field(default=False, alias="isApproved")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)  # allow snake_case in code, camelCase in payloads
+    model_config = ConfigDict(
+        populate_by_name=True, arbitrary_types_allowed=True
+    )  # allow snake_case in code, camelCase in payloads
 
 
 class WorkOrderItem(BaseModel):

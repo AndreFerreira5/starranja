@@ -27,7 +27,9 @@ class Vehicle(Document):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
-    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)  # allow snake_case in code, camelCase in payloads
+    model_config = ConfigDict(
+        populate_by_name=True, arbitrary_types_allowed=True
+    )  # allow snake_case in code, camelCase in payloads
 
     class Settings:
         name = "vehicles"  # collection name

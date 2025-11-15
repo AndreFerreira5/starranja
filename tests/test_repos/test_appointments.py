@@ -52,11 +52,11 @@ async def sample_vehicle(init_db, sample_client):
 
 
 @pytest.fixture(scope="function")
-async def sample_appointment(init_db, sample_client):
+async def sample_appointment(init_db, sample_client, sample_vehicle):
     """Fixture to create a sample appointment in the test DB."""
     appointment = Appointment(
         client_id=sample_client.id,
-        vehicleId=sample_vehicle.id,
+        vehicle_id=sample_vehicle.id,
         appointment_date=datetime.now(UTC),
         status=AppointmentStatus.SCHEDULED,
     )
@@ -94,12 +94,25 @@ async def test_create_appointment_success(appointment_repo, sample_client):
     assert found.status == AppointmentStatus.SCHEDULED
 
 
+async def test_create_appointment_failed(appointment_repo):
+    """Test creating an appointment with invalid data fails."""
+    create_data = AppointmentCreate(
+        client_id=ObjectId(),  # Non-existent client ID
+        appointment_date=datetime.now(UTC),
+        notes="Invalid appointment",
+    )
+
+    # This will fail with NotImplementedError
+    with pytest.raises(Exception):
+        await appointment_repo.create_appointment(create_data)
+
+
 async def test_get_appointment_by_id_success(appointment_repo, sample_appointment):
     # This will fail with NotImplementedError
-    found = await appointment_repo.get_appointment_by_id(sample_appointment._id)
+    found = await appointment_repo.get_appointment_by_id(sample_appointment.id)
 
     assert found is not None
-    assert found._id == sample_appointment._id
+    assert found.id == sample_appointment.id
 
 
 async def test_get_appointment_by_id_failed(
@@ -116,12 +129,13 @@ async def test_get_appointments_by_client_id_success(appointment_repo, sample_cl
 
     assert found_appointments is not None
     assert len(found_appointments) >= 1
-    assert any(appointment._id == sample_appointment._id for appointment in found_appointments)
+    assert any(appointment.id == sample_appointment.id for appointment in found_appointments)
 
 
 async def test_get_appointments_by_client_id_failed(appointment_repo):
     # This will fail with NotImplementedError
-    found_appointments = await appointment_repo.get_appointments_by_client_id(ObjectId())  # Random, non-existent client ID
+    # Random, non-existent client ID
+    found_appointments = await appointment_repo.get_appointments_by_client_id(ObjectId())
     assert found_appointments is None
 
 
@@ -130,34 +144,35 @@ async def test_get_appointments_by_vehicle_id_success(appointment_repo, sample_v
 
     assert found_appointments is not None
     assert len(found_appointments) >= 1
-    assert any(appointment._id == sample_appointment._id for appointment in found_appointments)
+    assert any(appointment.id == sample_appointment.id for appointment in found_appointments)
 
 
 async def test_get_appointments_by_vehicle_id_failed(appointment_repo):
     # This will fail with NotImplementedError
-    found_appointments = await appointment_repo.get_appointments_by_vehicle_id(ObjectId())  # Random, non-existent vehicle ID
+    # Random, non-existent vehicle ID
+    found_appointments = await appointment_repo.get_appointments_by_vehicle_id(ObjectId())
 
     assert found_appointments is None
 
 
 async def test_update_appointment_success(appointment_repo, sample_appointment):
     update_data = AppointmentUpdate(
-        id=sample_appointment._id,
+        id=sample_appointment.id,
         notes="Updated notes",
-        status=AppointmentStatus.RESCHEDULED,
+        status=AppointmentStatus.CANCELLED,
     )
 
     # This will fail with NotImplementedError
-    updated_appointment = await appointment_repo.update_appointment(update_data)
+    updated_appointment = await appointment_repo.update_appointment(sample_appointment.id, update_data)
 
     # --- Assertions (for when implemented) ---
     assert updated_appointment is not None
-    assert updated_appointment._id == sample_appointment._id
+    assert updated_appointment.id == sample_appointment.id
     assert updated_appointment.notes == update_data.notes
     assert updated_appointment.status == update_data.status
 
     # Verify it was actually updated in the DB
-    found = await Appointment.get(updated_appointment._id)
+    found = await Appointment.get(updated_appointment.id)
     assert found is not None
     assert found.notes == update_data.notes
     assert found.status == update_data.status
@@ -171,13 +186,14 @@ async def test_update_appointment_failed(appointment_repo):
     )
 
     # This will fail with NotImplementedError
-    updated_appointment = await appointment_repo.update_appointment(ObjectId(),update_data)
+    updated_appointment = await appointment_repo.update_appointment(ObjectId(), update_data)
 
     assert updated_appointment is None
 
 
 async def test_delete_appointment_success(appointment_repo, sample_appointment):
     # This will fail with NotImplementedError
+
     deleted = await appointment_repo.delete_appointment(sample_appointment.id)
 
     assert deleted is True
@@ -189,6 +205,7 @@ async def test_delete_appointment_success(appointment_repo, sample_appointment):
 
 async def test_delete_appointment_failed(appointment_repo):
     # This will fail with NotImplementedError
-    deleted = await appointment_repo.delete_appointment(ObjectId())  # Non-existent ID
+    # Non-existent ID
+    deleted = await appointment_repo.delete_appointment(ObjectId())
 
     assert deleted is False
