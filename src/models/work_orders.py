@@ -39,10 +39,10 @@ class Quote(BaseModel):
     """Embedded schema for the work order's quote."""
 
     client_observations: str | None = Field(None, alias="clientObservations")
-    diagnostic: str | None = Field(None)
+    diagnostic: str | None = Field(default=None)
     is_approved: bool = Field(default=False, alias="isApproved")
 
-    model_config = ConfigDict(populate_by_name=True)  # allow snake_case in code, camelCase in payloads
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class WorkOrderItem(BaseModel):
@@ -56,7 +56,7 @@ class WorkOrderItem(BaseModel):
     iva_rate: Decimal128 = Field(..., ge=0, le=1)
     total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # ---- Beanie Document (DB model) ----
@@ -128,7 +128,7 @@ class WorkOrderCreate(BaseModel):
     entry_date: datetime = Field(..., alias="entryDate")
     client_observations: str | None = Field(None, alias="clientObservations")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class WorkOrderUpdate(BaseModel):
@@ -140,7 +140,7 @@ class WorkOrderUpdate(BaseModel):
     quote: Quote | None = Field(None)
     items: list[WorkOrderItem] | None = Field(None)
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class WorkOrderOut(BaseModel):
