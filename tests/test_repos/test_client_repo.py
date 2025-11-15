@@ -1,15 +1,12 @@
-﻿import pytest
-import pytest_asyncio
+from datetime import datetime
+
+import pytest
 from bson import ObjectId
-from datetime import datetime, UTC
-from beanie import init_beanie
-from beanie.exceptions import RevisionIdWasChanged
-from mongomock_motor import AsyncMongoMockClient
 from pydantic_core._pydantic_core import ValidationError
 
 # Adjust imports based on your project structure
-from src.models.client import Client, ClientCreate, ClientUpdate, AddressUpdate
-from src.repository.client import (ClientRepo)
+from src.models.client import AddressUpdate, Client, ClientCreate, ClientUpdate
+from src.repository.client import ClientRepo
 
 # Mark all tests in this file as asyncio
 pytestmark = pytest.mark.asyncio
@@ -17,6 +14,7 @@ pytestmark = pytest.mark.asyncio
 # ============================================================================
 # FIXTURES - Database Setup and Async Configuration
 # ============================================================================
+
 
 @pytest.fixture(scope="function")
 async def client_repository(init_db):
@@ -32,11 +30,7 @@ async def sample_client(init_db):
         nif="123456789",
         phone="+351912345678",
         email="joao.silva@email.com",
-        address={
-            "street": "Rua das Flores, 123",
-            "city": "Lisboa",
-            "zip_code": "1000-100"
-        }
+        address={"street": "Rua das Flores, 123", "city": "Lisboa", "zip_code": "1000-100"},
     )
     await client.save()
     return client
@@ -50,11 +44,7 @@ async def sample_client_alternative(init_db):
         nif="987654321",
         phone="+351923456789",
         email="maria.santos@email.com",
-        address={
-            "street": "Avenida da Liberdade, 456",
-            "city": "Porto",
-            "zip_code": "4000-200"
-        }
+        address={"street": "Avenida da Liberdade, 456", "city": "Porto", "zip_code": "4000-200"},
     )
     await client.save()
     return client
@@ -81,11 +71,7 @@ async def test_create_client_success(client_repository):
         nif="123456789",
         phone="+351912345678",
         email="joao.silva@email.com",
-        address={
-            "street": "Rua das Flores, 123",
-            "city": "Lisboa",
-            "zip_code": "1000-100"
-        }
+        address={"street": "Rua das Flores, 123", "city": "Lisboa", "zip_code": "1000-100"},
     )
 
     created_client = await client_repository.create_client(create_data)
@@ -110,7 +96,6 @@ async def test_create_client_success(client_repository):
     assert found.nif == create_data.nif
 
 
-
 async def test_create_client_duplicate_nif_fails(client_repository, sample_client):
     """
     Test that creating a client with a duplicate NIF fails.
@@ -127,7 +112,7 @@ async def test_create_client_duplicate_nif_fails(client_repository, sample_clien
         name="Different Name",
         nif=sample_client.nif,  # Same NIF as existing client
         phone="+351999999999",
-        email="different@email.com"
+        email="different@email.com",
     )
 
     # --- Assertions ---
@@ -136,7 +121,6 @@ async def test_create_client_duplicate_nif_fails(client_repository, sample_clien
 
     error_msg = str(exc_info.value).lower()
     assert "nif" in error_msg or "duplicate" in error_msg or "unique" in error_msg
-
 
 
 async def test_create_client_missing_required_fields():
@@ -149,11 +133,12 @@ async def test_create_client_missing_required_fields():
     """
     # --- Assertions ---
     with pytest.raises(ValidationError):
-        invalid_client = ClientCreate(
+        ClientCreate(
             name="Invalid Client",
-            phone="+351912345678"
+            phone="+351912345678",
             # Missing required: nif
         )
+
 
 async def test_create_client_invalid_email():
     """
@@ -165,12 +150,7 @@ async def test_create_client_invalid_email():
     """
     # --- Assertions ---
     with pytest.raises(ValidationError) as exc_info:
-        invalid_client = ClientCreate(
-            name="Test Client",
-            nif="123456789",
-            phone="+351912345678",
-            email="not-a-valid-email"
-        )
+        ClientCreate(name="Test Client", nif="123456789", phone="+351912345678", email="not-a-valid-email")
 
     assert "email" in str(exc_info.value).lower()
 
@@ -203,7 +183,6 @@ async def test_get_client_by_id_success(client_repository, sample_client):
     assert isinstance(retrieved_client, Client)
 
 
-
 async def test_get_client_by_id_not_found(client_repository):
     """
     Test retrieval of a non-existent client by ID.
@@ -222,7 +201,6 @@ async def test_get_client_by_id_not_found(client_repository):
     assert retrieved_client is None, "Should return None for non-existent client"
 
 
-
 async def test_get_client_by_id_invalid_id_format(client_repository):
     """
     Test retrieval with invalid ID format.
@@ -237,7 +215,6 @@ async def test_get_client_by_id_invalid_id_format(client_repository):
     # Act & Assert
     with pytest.raises((ValueError, TypeError, Exception)):
         await client_repository.get_by_id(invalid_id)
-
 
 
 async def test_get_all_clients_success(client_repository, sample_client, sample_client_alternative):
@@ -261,7 +238,6 @@ async def test_get_all_clients_success(client_repository, sample_client, sample_
     assert all(client.nif is not None for client in all_clients)
 
 
-
 async def test_get_all_clients_empty_collection(client_repository):
     """
     Test retrieval of all clients when collection is empty.
@@ -276,7 +252,6 @@ async def test_get_all_clients_empty_collection(client_repository):
     # Assert
     assert isinstance(all_clients, list), "Should return a list"
     assert len(all_clients) == 0, "Should return empty list for empty collection"
-
 
 
 async def test_get_client_by_nif_success(client_repository, sample_client):
@@ -295,7 +270,6 @@ async def test_get_client_by_nif_success(client_repository, sample_client):
     assert retrieved_client.nif == sample_client.nif
     assert retrieved_client.name == sample_client.name
     assert retrieved_client.id == sample_client.id
-
 
 
 async def test_get_client_by_nif_not_found(client_repository):
@@ -334,11 +308,7 @@ async def test_update_client_success(client_repository, sample_client):
     client_id = sample_client.id
     original_created_at = sample_client.created_at
 
-    update_data = ClientUpdate(
-        name="João Silva Updated",
-        email="joao.updated@email.com",
-        phone="+351999999999"
-    )
+    update_data = ClientUpdate(name="João Silva Updated", email="joao.updated@email.com", phone="+351999999999")
 
     # Act
     updated_client = await client_repository.update(client_id, update_data)
@@ -389,12 +359,7 @@ async def test_update_client_partial_fields(client_repository, sample_client):
 async def test_update_client_address(client_repository, sample_client):
     """Test updating nested address fields."""
 
-    update_data = ClientUpdate(
-        address=AddressUpdate(
-            street="New Street, 999",
-            city="Coimbra"
-        )
-    )
+    update_data = ClientUpdate(address=AddressUpdate(street="New Street, 999", city="Coimbra"))
 
     updated_client = await client_repository.update(sample_client.id, update_data)
 
@@ -455,7 +420,7 @@ async def test_client_with_optional_fields_null(client_repository):
     minimal_client_data = ClientCreate(
         name="Minimal Client",
         nif="111222333",
-        phone="+351911111111"
+        phone="+351911111111",
         # email and address are optional
     )
 
@@ -474,7 +439,7 @@ async def test_client_nif_indexed_uniquely(init_db):
     client1 = Client(
         name="Test Client 1",
         nif="555666777",  # Use unique NIF
-        phone="+351912345678"
+        phone="+351912345678",
     )
     await client1.insert()
 
@@ -482,7 +447,7 @@ async def test_client_nif_indexed_uniquely(init_db):
     client2 = Client(
         name="Test Client 2",
         nif="555666777",  # Duplicate NIF
-        phone="+351923456789"
+        phone="+351923456789",
     )
 
     with pytest.raises(Exception) as exc_info:

@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from beanie import PydanticObjectId
 from bson import ObjectId
@@ -82,7 +81,7 @@ class ClientRepo:
             logger.error(f"Error retrieving client by ID: {str(e)}")
             raise
 
-    async def get_all_clients(self) -> List[Client]:
+    async def get_all_clients(self) -> list[Client]:
         """
         Retrieve all clients from the database.
 
@@ -150,10 +149,10 @@ class ClientRepo:
             update_dict = update_data.model_dump(exclude_unset=True)
 
             # If updating NIF, check for duplicates
-            if 'nif' in update_dict:
-                existing_client = await Client.find_one(Client.nif == update_dict['nif'])
+            if "nif" in update_dict:
+                existing_client = await Client.find_one(Client.nif == update_dict["nif"])
                 if existing_client and existing_client.id != client_id:
-                    raise ValueError(f"Cannot update: NIF already exists")
+                    raise ValueError("Cannot update: NIF already exists")
 
             # Update the client fields
             for field, value in update_dict.items():

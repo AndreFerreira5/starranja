@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from beanie import Document, Indexed, Insert, Replace, Save, before_event
+from beanie import Document, Indexed, Replace, Save, before_event
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
