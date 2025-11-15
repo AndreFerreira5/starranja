@@ -1,14 +1,14 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 from bson import ObjectId
 from fastapi import HTTPException  # <-- Import the exception
 
+from src.models.appointments import Appointment, AppointmentCreate, AppointmentStatus, AppointmentUpdate
 
 # Import  models
 from src.models.client import Client
 from src.models.vehicle import Vehicle
-from src.models.appointments import Appointment, AppointmentCreate, AppointmentStatus, AppointmentUpdate
 
 # Import the repository to test
 from src.repository.appointments import AppointmentRepo

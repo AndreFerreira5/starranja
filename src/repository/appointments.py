@@ -35,11 +35,8 @@ class AppointmentRepo:
             if not client:
                 logger.warning(f"Client not found: {appointment_data.client_id}. Aborting appointment creation.")
 
-                raise HTTPException(
-                    status_code=404, 
-                    detail=f"Client with id {appointment_data.client_id} not found"
-                )
-            
+                raise HTTPException(status_code=404, detail=f"Client with id {appointment_data.client_id} not found")
+
             appointment = Appointment(**appointment_data.model_dump())
 
             await appointment.insert()
@@ -47,7 +44,7 @@ class AppointmentRepo:
             logger.info(f"Appointment created with ID: {appointment.id}")
 
             return appointment
-        
+
         except Exception as e:
             logger.error(f"Error creating appointment: {e}")
             raise
@@ -66,14 +63,14 @@ class AppointmentRepo:
 
         try:
             appointment = await Appointment.get(appointment_id)
-            
+
             if appointment:
                 logger.info(f"Appointment found: {appointment}")
 
             else:
                 logger.info("No appointment found with the given ID")
             return appointment
-        
+
         except Exception as e:
             logger.error(f"Error retrieving appointment: {e}")
             raise
@@ -97,12 +94,12 @@ class AppointmentRepo:
                 logger.info(f"Found {len(appointments)} appointments for client ID {client_id}")
 
                 return appointments
-            
+
             else:
                 logger.info("No appointments found for the given client ID")
 
                 return None
-            
+
         except Exception as e:
             logger.error(f"Error retrieving appointments: {e}")
             raise
@@ -126,12 +123,12 @@ class AppointmentRepo:
                 logger.info(f"Found {len(appointments)} appointments for vehicle ID {vehicle_id}")
 
                 return appointments
-            
+
             else:
                 logger.info("No appointments found for the given vehicle ID")
 
                 return None
-            
+
         except Exception as e:
             logger.error(f"Error retrieving appointments: {e}")
             raise
@@ -165,7 +162,7 @@ class AppointmentRepo:
             logger.info(f"Appointment updated: {appointment}")
 
             return appointment
-        
+
         except Exception as e:
             logger.error(f"Error updating appointment: {e}")
             raise
@@ -194,7 +191,7 @@ class AppointmentRepo:
             logger.info("Appointment deleted successfully")
 
             return True
-        
+
         except Exception as e:
             logger.error(f"Error deleting appointment: {e}")
             raise
