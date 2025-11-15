@@ -11,7 +11,7 @@ class Address(BaseModel):
     city: str | None = Field(None, alias="city")
     zip_code: str | None = Field(None, alias="zipCode")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # ---- Beanie Document (DB model) ----
@@ -27,7 +27,7 @@ class Client(Document):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
     class Settings:
         name = "clients"  # collection name
@@ -54,7 +54,7 @@ class AddressUpdate(BaseModel):
     city: str | None = None
     zip_code: str | None = Field(None, alias="zipCode")
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class ClientBase(BaseModel):
@@ -66,7 +66,7 @@ class ClientBase(BaseModel):
     email: EmailStr | None = None
     address: AddressCreate | None = None
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # - Partial update; all fields optional
@@ -82,11 +82,11 @@ class ClientUpdate(BaseModel):
     email: EmailStr | None = None
     address: AddressUpdate | None = None
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class ClientOut(ClientBase):
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
 
-    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, arbitrary_types_allowed=True)

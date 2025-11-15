@@ -27,7 +27,7 @@ class Vehicle(Document):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="updatedAt")
 
-    model_config = ConfigDict(populate_by_name=True)  # allow snake_case in code, camelCase in payloads
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)  # allow snake_case in code, camelCase in payloads
 
     class Settings:
         name = "vehicles"  # collection name
@@ -54,7 +54,7 @@ class VehicleBase(BaseModel):
     kilometers: int = Field(ge=0)
     vin: VIN
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 # - This is a schema for when creating a vehicle, it inherits the VehicleBase schema
@@ -67,7 +67,7 @@ class VehicleCreate(VehicleBase):
 class VehicleUpdate(BaseModel):
     kilometers: int | None = Field(None, ge=0)
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
 class VehicleOut(VehicleBase):
@@ -76,4 +76,4 @@ class VehicleOut(VehicleBase):
     created_at: datetime = Field(alias="createdAt")
     updated_at: datetime = Field(alias="updatedAt")
 
-    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True, arbitrary_types_allowed=True)

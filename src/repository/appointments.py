@@ -70,7 +70,7 @@ class AppointmentRepo:
 
         raise NotImplementedError("get_by_vehicle_id method not yet implemented")
 
-    async def update(self, appointment_id: ObjectId, update_data: AppointmentUpdate) -> Appointment | None:
+    async def update_appointment(self, appointment_id: ObjectId, update_data: AppointmentUpdate) -> Appointment | None:
         """
         Update an existing appointment.
 
@@ -85,7 +85,7 @@ class AppointmentRepo:
 
         raise NotImplementedError("update method not yet implemented")
 
-    async def delete(self, appointment_id: ObjectId) -> bool:
+    async def delete_appointment(self, appointment_id: ObjectId) -> bool:
         """
         Delete an appointment by its ID.
 
