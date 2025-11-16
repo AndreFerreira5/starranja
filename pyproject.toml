@@ -20,6 +20,7 @@ dependencies = [
     "pytest-asyncio",
     "motor>=3.5.0",
     "pydantic[email]>=2.12.4",
+    "mongomock-motor",
 ]
 
 [dependency-groups]
