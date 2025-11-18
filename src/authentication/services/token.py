@@ -57,7 +57,6 @@ class TokenService:
         """
         try:
             key_material = settings.auth.PASETO_SECRET_KEY
-            print("KEY: ", key_material)
 
             # Strip any whitespace
             key_material = key_material.strip()

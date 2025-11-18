@@ -127,9 +127,7 @@ async def register_user(
         except Exception as create_error:
             logger.error(f"User creation error: {create_error}", exc_info=True)
             await db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error creating user: {str(create_error)}"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error creating user")
 
         # Get role
         try:
@@ -144,9 +142,7 @@ async def register_user(
         except Exception as role_error:
             logger.error(f"Role lookup error: {role_error}", exc_info=True)
             await db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error looking up role: {str(role_error)}"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error looking up role")
 
         # Assign role to user
         try:
@@ -155,9 +151,7 @@ async def register_user(
         except Exception as assign_error:
             logger.error(f"Role assignment error: {assign_error}", exc_info=True)
             await db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error assigning role: {str(assign_error)}"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error assigning role")
 
         # Commit transaction
         try:
@@ -166,9 +160,7 @@ async def register_user(
         except Exception as commit_error:
             logger.error(f"Database commit error: {commit_error}", exc_info=True)
             await db.rollback()
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Error saving user: {str(commit_error)}"
-            )
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error saving user")
 
         # Refresh to get the latest data including created_at timestamp
         try:
@@ -189,5 +181,6 @@ async def register_user(
         logger.error(f"Unexpected error during registration: {e}", exc_info=True)
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"An unexpected error occurred: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred. Please try again later.",
         )

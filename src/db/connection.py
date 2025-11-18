@@ -32,8 +32,6 @@ class PostgreSQLDatabase:
                 self._session_factory = async_sessionmaker(
                     self._engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
                 )
-                async with self._engine.begin() as conn:
-                    await conn.execute(text("SELECT 1"))
                 logger.info("Successfully connected to PostgreSQL")
             except SQLAlchemyError as e:
                 logger.error(f"Failed to connect to PostgreSQL: {str(e)}")
