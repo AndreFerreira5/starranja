@@ -24,6 +24,7 @@ from src.routes import auth, users
 configure_logging()
 logger = logging.getLogger(__name__)
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await auth_db_connect()
@@ -38,7 +39,7 @@ app = FastAPI(
         ActiveWorkOrderExistsError: active_work_order_exists_handler,
         WorkOrderNumberConflictError: work_order_number_conflict_handler,
         WorkOrderDatabaseError: work_order_database_error_handler,
-    }
+    },
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])

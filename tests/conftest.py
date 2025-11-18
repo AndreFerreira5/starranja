@@ -1,12 +1,11 @@
 import asyncio
 import os
-
 import sys
 import uuid
 from collections.abc import AsyncGenerator
 from secrets import token_hex
-import asyncpg
 
+import asyncpg
 import motor.motor_asyncio
 import pytest_asyncio
 from beanie import init_beanie
@@ -23,7 +22,6 @@ if "PASETO_SECRET_KEY" not in os.environ:
     os.environ["PASETO_SECRET_KEY"] = settings.auth.PASETO_SECRET_KEY
 
 import pytest
-import pytest_asyncio
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
