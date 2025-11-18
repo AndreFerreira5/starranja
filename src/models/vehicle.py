@@ -65,6 +65,8 @@ class VehicleBase(BaseModel):
 class VehicleCreate(VehicleBase):
     client_id: ObjectId = Field(..., alias="clientId")
 
+    model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+
 
 class VehicleUpdate(BaseModel):
     kilometers: int | None = Field(None, ge=0)

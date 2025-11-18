@@ -20,7 +20,6 @@ dependencies = [
     "pytest-asyncio",
     "motor>=3.5.0",
     "pydantic[email]>=2.12.4",
-    "mongomock-motor",
 ]
 
 [dependency-groups]
@@ -42,7 +41,6 @@ select = ["E", "F", "I", "N", "W", "UP"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-
 addopts = [
     "--cov=src",
     "--cov-report=term-missing",
@@ -56,6 +54,14 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 pythonpath = "src"
 env_files = [".env"]
+
+# Silence Pydantic v2.11+ deprecation warnings.
+# These (PydanticDeprecatedSince211) are triggered *inside* our
+# dependencies (beanie, lazy_model) and not in our own app code.
+# This filter can be removed if/when beanie releases an update.
+filterwarnings = [
+    "ignore:Accessing the 'model_fields' attribute on the instance is deprecated:DeprecationWarning",
+]
 
 [tool.coverage.report]
 exclude_lines = [
