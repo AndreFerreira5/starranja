@@ -35,12 +35,12 @@ if not load_dotenv(".env.test", override=False):
 # Import after environment is configured
 from src.db.connection import get_auth_db
 from src.main import app
+from src.models.appointments import Appointment
 from src.models.auth import Base
 from src.models.client import Client
 from src.models.invoices import Invoice
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
-from src.models.appointments import Appointment
 
 if "PASETO_SECRET_KEY" not in os.environ:
     settings.auth.PASETO_SECRET_KEY = token_hex(32)
