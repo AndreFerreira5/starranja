@@ -3,7 +3,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from src.api.exception_handlers import (
+from src.exceptions.handlers import (
     active_work_order_exists_handler,
     work_order_database_error_handler,
     work_order_not_found_handler,
