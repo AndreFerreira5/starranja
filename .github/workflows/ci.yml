@@ -51,4 +51,6 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run pytest
+        env:
+          MONGO_TEST_DATABASE_URL: ${{ secrets.TESTING_MONGO_DB_CONN_STR }}
         run: uv run pytest
