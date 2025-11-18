@@ -22,13 +22,6 @@ if "PASETO_SECRET_KEY" not in os.environ:
     settings.auth.PASETO_SECRET_KEY = token_hex(32)
 
 
-from src.models.client import Client
-from src.models.invoices import Invoice
-from src.models.vehicle import Vehicle
-from src.models.work_orders import WorkOrder
-from src.models.appointments import Appointment
-
-
 @pytest_asyncio.fixture(scope="function")
 async def init_db():
     """
