@@ -35,11 +35,15 @@ if not load_dotenv(".env.test", override=False):
 # Import after environment is configured
 from src.db.connection import get_auth_db
 from src.main import app
+from src.models.appointments import Appointment
 from src.models.auth import Base
 from src.models.client import Client
 from src.models.invoices import Invoice
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
+
+if "PASETO_SECRET_KEY" not in os.environ:
+    settings.auth.PASETO_SECRET_KEY = token_hex(32)
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -282,7 +286,7 @@ async def init_db():
     await client.drop_database(db_name)
 
     # 5. Initialize Beanie with all your document models
-    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice])
+    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice, Appointment])
 
     try:
         # 6. Yield the database for the test to use
