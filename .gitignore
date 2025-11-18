@@ -54,6 +54,7 @@ instance/
 
 # FastAPI/Starlette specific (common environment)
 .env
+.env.test
 .env.*.local
 connect_to_postgres.env
 
