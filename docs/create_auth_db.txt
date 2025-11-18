@@ -1,5 +1,0 @@
-In PostgresSQL use this query for the first time only:
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-To create the tables:
-alembic upgrade head

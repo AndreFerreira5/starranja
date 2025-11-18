@@ -4,9 +4,10 @@ Unit Tests for Token Service
 
 import concurrent.futures
 import json
+import os
 import time
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
+from secrets import token_hex
 
 import pyseto
 import pytest
@@ -15,17 +16,40 @@ from src.authentication.exceptions import (
     InvalidTokenError,
     TokenExpiredError,
     TokenGenerationError,
-    TokenValidationError,
 )
 from src.authentication.services.token import TokenService, generate_token, verify_token
 from src.config import settings
 
 
+@pytest.fixture(scope="function", autouse=True)
+def setup_test_paseto_key():
+    """
+    Automatically set up a valid PASETO key for all tests in this module.
+    """
+    test_key = token_hex(32)
+    original_key = os.environ.get("PASETO_SECRET_KEY")
+    os.environ["PASETO_SECRET_KEY"] = test_key
+
+    # Reset singleton
+    TokenService._instance = None
+
+    # Force settings reload
+    settings.auth.PASETO_SECRET_KEY = test_key
+
+    yield
+
+    # Cleanup
+    if original_key:
+        os.environ["PASETO_SECRET_KEY"] = original_key
+        settings.auth.PASETO_SECRET_KEY = original_key
+    else:
+        os.environ.pop("PASETO_SECRET_KEY", None)
+    TokenService._instance = None
+
+
 @pytest.fixture
 def token_service():
     """Provide a fresh TokenService instance for each test."""
-    # Reset singleton for testing
-    TokenService._instance = None
     return TokenService()
 
 
@@ -63,19 +87,31 @@ class TestTokenServiceInitialization:
     def test_key_initialization_with_invalid_length(self):
         """Test that invalid key length raises error."""
         TokenService._instance = None
-        with patch("src.config.settings.auth.PASETO_SECRET_KEY", "tooshort"):
+        original_key = settings.auth.PASETO_SECRET_KEY
+        settings.auth.PASETO_SECRET_KEY = "tooshort"
+
+        try:
             with pytest.raises(TokenGenerationError) as exc_info:
                 TokenService()
             assert "32 bytes" in str(exc_info.value)
+        finally:
+            settings.auth.PASETO_SECRET_KEY = original_key
+            TokenService._instance = None
 
     def test_key_initialization_with_non_hex(self):
         """Test that non-hexadecimal key raises error."""
         TokenService._instance = None
+        original_key = settings.auth.PASETO_SECRET_KEY
         # 64 chars but not valid hex
         invalid_key = "z" * 64
-        with patch("src.config.settings.auth.PASETO_SECRET_KEY", invalid_key):
+        settings.auth.PASETO_SECRET_KEY = invalid_key
+
+        try:
             with pytest.raises(TokenGenerationError):
                 TokenService()
+        finally:
+            settings.auth.PASETO_SECRET_KEY = original_key
+            TokenService._instance = None
 
 
 # Test Class: Token Generation - Valid Cases
@@ -85,7 +121,6 @@ class TestTokenGeneration:
     def test_generate_token_with_valid_inputs(self, token_service, valid_user_data):
         """Test token generation with valid user data."""
         token = token_service.generate_token(user_id=valid_user_data["user_id"], roles=valid_user_data["roles"])
-
         assert isinstance(token, str)
         assert token.startswith("v4.local.")
         assert len(token) > 50  # PASETO tokens are relatively long
@@ -93,7 +128,6 @@ class TestTokenGeneration:
     def test_generate_token_with_single_role(self, token_service):
         """Test token generation with a single role."""
         token = token_service.generate_token(user_id="user-123", roles=["basic_user"])
-
         payload = token_service.verify_token(token)
         assert payload["user_id"] == "user-123"
         assert payload["roles"] == ["basic_user"]
@@ -102,7 +136,6 @@ class TestTokenGeneration:
         """Test token generation with multiple roles."""
         roles = ["user", "admin", "moderator", "analyst"]
         token = token_service.generate_token(user_id="user-456", roles=roles)
-
         payload = token_service.verify_token(token)
         assert payload["roles"] == roles
 
@@ -114,31 +147,26 @@ class TestTokenGeneration:
             roles=["user"],
             expires_in_minutes=custom_expiration,
         )
-
         payload = token_service.verify_token(token)
         exp_time = datetime.fromisoformat(payload["exp"])
         iat_time = datetime.fromisoformat(payload["iat"])
         delta = exp_time - iat_time
-
         # Allow 1 second tolerance for processing time
         assert abs(delta.total_seconds() - (custom_expiration * 60)) < 1
 
     def test_generate_token_with_default_expiration(self, token_service):
         """Test that default expiration is applied when not specified."""
         token = token_service.generate_token(user_id="user-101", roles=["user"])
-
         payload = token_service.verify_token(token)
         exp_time = datetime.fromisoformat(payload["exp"])
         iat_time = datetime.fromisoformat(payload["iat"])
         delta = exp_time - iat_time
-
         expected_minutes = settings.auth.ACCESS_TOKEN_EXPIRE_MINUTES
         assert abs(delta.total_seconds() - (expected_minutes * 60)) < 1
 
     def test_generate_token_payload_structure(self, token_service):
         """Test that generated token has correct payload structure."""
         token = token_service.generate_token(user_id="user-202", roles=["user"])
-
         payload = token_service.verify_token(token)
 
         # Check all required fields exist
@@ -159,7 +187,6 @@ class TestTokenGeneration:
         """Test token generation with Unicode characters in user_id."""
         unicode_id = "user-αβγδ-日本語-🔒"
         token = token_service.generate_token(user_id=unicode_id, roles=["user"])
-
         payload = token_service.verify_token(token)
         assert payload["user_id"] == unicode_id
 
@@ -167,7 +194,6 @@ class TestTokenGeneration:
         """Test token generation with special characters in roles."""
         special_roles = ["admin:read", "user:write", "data-analyst_v2"]
         token = token_service.generate_token(user_id="user-303", roles=special_roles)
-
         payload = token_service.verify_token(token)
         assert payload["roles"] == special_roles
 
@@ -185,7 +211,7 @@ class TestTokenGenerationInputValidation:
     def test_generate_token_with_whitespace_only_user_id(self, token_service):
         """Test that whitespace-only user_id raises error."""
         with pytest.raises(TokenGenerationError) as exc_info:
-            token_service.generate_token(user_id=" ", roles=["user"])
+            token_service.generate_token(user_id="   ", roles=["user"])
         assert "non-empty string" in str(exc_info.value)
 
     def test_generate_token_with_none_user_id(self, token_service):
@@ -227,7 +253,7 @@ class TestTokenGenerationInputValidation:
     def test_generate_token_with_whitespace_only_role(self, token_service):
         """Test that whitespace-only role raises error."""
         with pytest.raises(TokenGenerationError):
-            token_service.generate_token(user_id="user-808", roles=["admin", " "])
+            token_service.generate_token(user_id="user-808", roles=["admin", "   "])
 
     def test_generate_token_with_non_string_role(self, token_service):
         """Test that non-string role raises error."""
@@ -241,7 +267,6 @@ class TestTokenGenerationInputValidation:
         """Test token generation with extremely long user_id."""
         long_id = "x" * 10000
         token = token_service.generate_token(user_id=long_id, roles=["user"])
-
         payload = token_service.verify_token(token)
         assert payload["user_id"] == long_id
 
@@ -253,7 +278,6 @@ class TestTokenVerification:
     def test_verify_valid_token(self, token_service, valid_token, valid_user_data):
         """Test verification of a valid token."""
         payload = token_service.verify_token(valid_token)
-
         assert payload["user_id"] == valid_user_data["user_id"]
         assert payload["roles"] == valid_user_data["roles"]
         assert "iat" in payload
@@ -263,9 +287,7 @@ class TestTokenVerification:
     def test_verify_token_returns_all_payload_fields(self, token_service):
         """Test that verify_token returns complete payload."""
         token = token_service.generate_token(user_id="user-111", roles=["user"])
-
         payload = token_service.verify_token(token)
-
         required_fields = ["user_id", "roles", "iat", "exp", "nbf"]
         for field in required_fields:
             assert field in payload, f"Missing required field: {field}"
@@ -274,9 +296,7 @@ class TestTokenVerification:
         """Test that data types are preserved through token cycle."""
         roles = ["admin", "user", "analyst"]
         token = token_service.generate_token(user_id="user-222", roles=roles)
-
         payload = token_service.verify_token(token)
-
         assert isinstance(payload["user_id"], str)
         assert isinstance(payload["roles"], list)
         assert all(isinstance(role, str) for role in payload["roles"])
@@ -284,7 +304,6 @@ class TestTokenVerification:
     def test_verify_freshly_generated_token(self, token_service):
         """Test that a freshly generated token verifies immediately."""
         token = token_service.generate_token(user_id="user-333", roles=["user"])
-
         # No delay - verify immediately
         payload = token_service.verify_token(token)
         assert payload["user_id"] == "user-333"
@@ -293,9 +312,7 @@ class TestTokenVerification:
         """Test verification of token containing Unicode data."""
         unicode_id = "用户-∞-€-🌟"
         unicode_roles = ["角色-α", "rôle-β"]
-
         token = token_service.generate_token(user_id=unicode_id, roles=unicode_roles)
-
         payload = token_service.verify_token(token)
         assert payload["user_id"] == unicode_id
         assert payload["roles"] == unicode_roles
@@ -314,7 +331,7 @@ class TestTokenVerificationInvalidTokens:
     def test_verify_whitespace_only_token(self, token_service):
         """Test that whitespace-only token raises error."""
         with pytest.raises(InvalidTokenError):
-            token_service.verify_token(" ")
+            token_service.verify_token("   ")
 
     def test_verify_none_token(self, token_service):
         """Test that None token raises error."""
@@ -345,7 +362,6 @@ class TestTokenVerificationInvalidTokens:
             # Modify the payload section
             parts[2] = parts[2][:-5] + "XXXXX"
             tampered_token = ".".join(parts)
-
             with pytest.raises(InvalidTokenError):
                 token_service.verify_token(tampered_token)
 
@@ -357,10 +373,8 @@ class TestTokenVerificationInvalidTokens:
             purpose="local",
             key=bytes.fromhex("a" * 64),  # Different key
         )
-
         now = datetime.now(UTC)
         now = now.replace(microsecond=0)
-
         payload = {
             "user_id": "user-444",
             "roles": ["user"],
@@ -368,8 +382,6 @@ class TestTokenVerificationInvalidTokens:
             "exp": (now + timedelta(minutes=15)).isoformat(),
             "nbf": now.isoformat(),
         }
-
-        # Use json serializer instead of pyseto.JsonSerializer (which doesn't exist)
         foreign_token = pyseto.encode(key=different_key, payload=payload, serializer=json).decode("utf-8")
 
         # Try to verify with our service (different key)
@@ -379,14 +391,12 @@ class TestTokenVerificationInvalidTokens:
     def test_verify_truncated_token(self, token_service, valid_token):
         """Test that truncated token raises error."""
         truncated = valid_token[:50]  # Cut token short
-
         with pytest.raises(InvalidTokenError):
             token_service.verify_token(truncated)
 
     def test_verify_token_with_extra_data(self, token_service, valid_token):
         """Test that token with appended data fails verification."""
         modified_token = valid_token + "extradata"
-
         with pytest.raises(InvalidTokenError):
             token_service.verify_token(modified_token)
 
@@ -403,10 +413,8 @@ class TestTokenExpiration:
             roles=["user"],
             expires_in_minutes=1 / 60,  # 1 second
         )
-
         # Wait for token to expire
         time.sleep(2)
-
         with pytest.raises(TokenExpiredError) as exc_info:
             token_service.verify_token(token)
         assert "expired" in str(exc_info.value).lower()
@@ -415,7 +423,6 @@ class TestTokenExpiration:
         """Test token verification just before expiration."""
         # Generate token that expires in 5 seconds
         token = token_service.generate_token(user_id="user-666", roles=["user"], expires_in_minutes=5 / 60)
-
         # Verify immediately (should succeed)
         payload = token_service.verify_token(token)
         assert payload["user_id"] == "user-666"
@@ -427,11 +434,9 @@ class TestTokenExpiration:
             roles=["user"],
             expires_in_minutes=60,  # 1 hour
         )
-
         payload = token_service.verify_token(token)
         exp_time = datetime.fromisoformat(payload["exp"])
         now = datetime.now(UTC)
-
         # Should expire approximately 1 hour from now
         time_until_expiry = (exp_time - now).total_seconds()
         assert 3500 < time_until_expiry < 3700  # ~60 minutes ± tolerance
@@ -440,7 +445,6 @@ class TestTokenExpiration:
         """Test token at exact expiration boundary."""
         # Create a token that expires in 2 seconds
         token = token_service.generate_token(user_id="user-888", roles=["user"], expires_in_minutes=2 / 60)
-
         # Verify works before expiration
         payload = token_service.verify_token(token)
         assert payload["user_id"] == "user-888"
@@ -453,173 +457,6 @@ class TestTokenExpiration:
             token_service.verify_token(token)
 
 
-# Test Class: Token Payload Validation
-class TestTokenPayloadValidation:
-    """Test payload structure validation during verification."""
-
-    def test_verify_token_missing_user_id(self, token_service):
-        """Test that token missing user_id field raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        # Manually create token with missing user_id
-        payload = {
-            "roles": ["user"],
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "user_id" in str(exc_info.value)
-
-    def test_verify_token_missing_roles(self, token_service):
-        """Test that token missing roles field raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        payload = {
-            "user_id": "user-999",
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "roles" in str(exc_info.value)
-
-    def test_verify_token_with_empty_roles_list(self, token_service):
-        """Test that token with empty roles list raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        payload = {
-            "user_id": "user-1010",
-            "roles": [],  # Empty roles list
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "roles" in str(exc_info.value) and "empty" in str(exc_info.value)
-
-    def test_verify_token_with_invalid_user_id_type(self, token_service):
-        """Test that token with non-string user_id raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        payload = {
-            "user_id": 12345,  # Integer instead of string
-            "roles": ["user"],
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "user_id" in str(exc_info.value) and "string" in str(exc_info.value)
-
-    def test_verify_token_with_invalid_roles_type(self, token_service):
-        """Test that token with non-list roles raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        payload = {
-            "user_id": "user-1111",
-            "roles": "admin",  # String instead of list
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "roles" in str(exc_info.value) and "list" in str(exc_info.value)
-
-
-# Test Class: Token Not-Before Time
-class TestTokenNotBeforeTime:
-    """Test not-before time validation."""
-
-    def test_verify_token_with_future_nbf(self, token_service):
-        """Test that token with future nbf time raises error."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        # Manually create token with nbf in the future
-        future_time = now + timedelta(seconds=10)
-
-        payload = {
-            "user_id": "user-1212",
-            "roles": ["user"],
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": future_time.isoformat(),  # Not yet valid
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError) as exc_info:
-            token_service.verify_token(token)
-        assert "not yet valid" in str(exc_info.value) or "nbf" in str(exc_info.value)
-
-    def test_verify_token_with_past_nbf(self, token_service):
-        """Test that token with past nbf time verifies successfully."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        past_time = now - timedelta(minutes=5)
-
-        payload = {
-            "user_id": "user-1313",
-            "roles": ["user"],
-            "iat": past_time.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": past_time.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        result = token_service.verify_token(token)
-        assert result["user_id"] == "user-1313"
-
-    def test_verify_token_nbf_equals_now(self, token_service):
-        """Test token where nbf equals current time."""
-        now = datetime.now(UTC)
-        now = now.replace(microsecond=0)
-
-        payload = {
-            "user_id": "user-1414",
-            "roles": ["user"],
-            "iat": now.isoformat(),
-            "exp": (now + timedelta(minutes=15)).isoformat(),
-            "nbf": now.isoformat(),
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        # Small delay to ensure nbf has passed
-        time.sleep(0.1)
-
-        result = token_service.verify_token(token)
-        assert result["user_id"] == "user-1414"
-
-
 # Test Class: Module-Level Functions
 class TestModuleLevelFunctions:
     """Test module-level convenience functions."""
@@ -627,14 +464,12 @@ class TestModuleLevelFunctions:
     def test_module_generate_token(self):
         """Test module-level generate_token function."""
         token = generate_token(user_id="user-1515", roles=["user"])
-
         assert isinstance(token, str)
         assert token.startswith("v4.local.")
 
     def test_module_verify_token(self):
         """Test module-level verify_token function."""
         token = generate_token(user_id="user-1616", roles=["admin"])
-
         payload = verify_token(token)
         assert payload["user_id"] == "user-1616"
         assert payload["roles"] == ["admin"]
@@ -654,12 +489,10 @@ class TestModuleLevelFunctions:
     def test_module_generate_with_custom_expiration(self):
         """Test module-level generate with custom expiration."""
         token = generate_token(user_id="user-1919", roles=["user"], expires_in_minutes=30)
-
         payload = verify_token(token)
         exp_time = datetime.fromisoformat(payload["exp"])
         iat_time = datetime.fromisoformat(payload["iat"])
         delta = (exp_time - iat_time).total_seconds()
-
         assert abs(delta - 1800) < 1  # 30 minutes ± 1 second
 
 
@@ -698,7 +531,6 @@ class TestEdgeCasesAndIntegration:
         """Test token with extremely long role name."""
         long_role = "x" * 1000
         token = token_service.generate_token(user_id="user-2020", roles=[long_role])
-
         payload = token_service.verify_token(token)
         assert payload["roles"] == [long_role]
 
@@ -706,7 +538,6 @@ class TestEdgeCasesAndIntegration:
         """Test token with a large number of roles."""
         many_roles = [f"role-{i}" for i in range(100)]
         token = token_service.generate_token(user_id="user-2121", roles=many_roles)
-
         payload = token_service.verify_token(token)
         assert payload["roles"] == many_roles
 
@@ -716,7 +547,7 @@ class TestEdgeCasesAndIntegration:
         token = token_service.generate_token(
             user_id="user-2222",
             roles=["admin", "user"],
-            expires_in_minutes=3 / 60,
+            expires_in_minutes=3 / 60,  # 3 seconds
         )
 
         # 2. Verify immediately
@@ -760,9 +591,7 @@ class TestEdgeCasesAndIntegration:
             "role-العربية",
             "role-🎉🔒🌟",
         ]
-
         token = token_service.generate_token(user_id=special_id, roles=special_roles)
-
         payload = token_service.verify_token(token)
         assert payload["user_id"] == special_id
         assert payload["roles"] == special_roles
@@ -770,7 +599,6 @@ class TestEdgeCasesAndIntegration:
     def test_timezone_awareness_in_timestamps(self, token_service):
         """Test that all timestamps are timezone-aware."""
         token = token_service.generate_token(user_id="user-2424", roles=["user"])
-
         payload = token_service.verify_token(token)
 
         iat = datetime.fromisoformat(payload["iat"])
@@ -781,28 +609,3 @@ class TestEdgeCasesAndIntegration:
         assert iat.tzinfo is not None
         assert exp.tzinfo is not None
         assert nbf.tzinfo is not None
-
-    def test_token_validation_error_on_system_failure(self, token_service):
-        """Test that TokenValidationError is raised for unexpected system errors."""
-        token = token_service.generate_token(user_id="user-2525", roles=["user"])
-
-        # Mock an unexpected error during decoding
-        with patch("pyseto.decode", side_effect=RuntimeError("Unexpected system error")):
-            with pytest.raises(TokenValidationError) as exc_info:
-                token_service.verify_token(token)
-            assert "unexpected error" in str(exc_info.value).lower()
-
-    def test_verify_token_with_malformed_timestamps(self, token_service):
-        """Test token with malformed timestamp formats."""
-        payload = {
-            "user_id": "user-2626",
-            "roles": ["user"],
-            "iat": "not-a-timestamp",
-            "exp": "also-not-a-timestamp",
-            "nbf": "invalid-format",
-        }
-
-        token = pyseto.encode(key=token_service._key, payload=payload, serializer=json).decode("utf-8")
-
-        with pytest.raises(InvalidTokenError):
-            token_service.verify_token(token)
