@@ -95,8 +95,11 @@ jobs:
             docker run -d --name starranja-backend \
               --restart on-failure \
               -p 3000:3000 \
+              -e AUTH__PASETO_SECRET_KEY=${{ secrets.PASETO_SECRET_KEY }} \
+              -e DATABASE__AUTH_DATABASE_URL=${{ secrets.PROD_AUTH_DB_CONN_STR }} \
+              -e DATABASE__MONGO_DATABASE_URL=${{ secrets.PROD_MONGO_DB_CONN_STR }} \
               ${{ env.DOCKER_REGISTRY }}/${{ steps.image-name.outputs.IMAGE_NAME }}-backend:latest
-    
+
             echo "Deployment successful!"
     
           ENDSSH
