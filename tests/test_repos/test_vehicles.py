@@ -28,7 +28,6 @@ async def sample_vehicle(init_db):
         model="Model",
         kilometers=1000,
         vin="1234567890ABCDEFG",
-        # ... other required Vehicle fields
     )
     await vehicle.save()
     return vehicle
@@ -38,8 +37,8 @@ async def test_create_vehicle_success(vehicle_repo):
     """Test creating a new vehicle successfully."""
     client_id = ObjectId()
     create_data = VehicleCreate(
-        clientId=client_id,
-        licensePlate="XX-99-YY",
+        client_id=client_id,
+        license_plate="XX-99-YY",
         brand="Tesla",
         model="Model Y",
         kilometers=0,
@@ -62,8 +61,8 @@ async def test_create_vehicle_success(vehicle_repo):
 async def test_create_vehicle_duplicate_license_plate(vehicle_repo, sample_vehicle):
     """Test creating a vehicle with duplicate license plate fails."""
     create_data = VehicleCreate(
-        clientId=ObjectId(),
-        licensePlate=sample_vehicle.license_plate,
+        client_id=ObjectId(),
+        license_plate=sample_vehicle.license_plate,
         brand="Other",
         model="Car",
         kilometers=10,
@@ -77,8 +76,8 @@ async def test_create_vehicle_duplicate_license_plate(vehicle_repo, sample_vehic
 async def test_create_vehicle_duplicate_vin(vehicle_repo, sample_vehicle):
     """Test creating a vehicle with duplicate VIN fails."""
     create_data = VehicleCreate(
-        clientId=ObjectId(),
-        licensePlate="XX-99-YY",
+        client_id=ObjectId(),
+        license_plate="XX-99-YY",
         brand="Other",
         model="Car",
         kilometers=10,
