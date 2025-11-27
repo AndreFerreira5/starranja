@@ -1,6 +1,5 @@
 import logging
 
-
 from beanie import PydanticObjectId
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
@@ -10,7 +9,6 @@ from src.exceptions.clients import (
     ClientNotFoundError,
     DuplicateClientNIFError,
 )
-
 from src.models.client import Client, ClientCreate, ClientUpdate
 
 logger = logging.getLogger(__name__)
