@@ -18,10 +18,6 @@ from src.repository.work_orders import WorkOrderRepo
 pytestmark = pytest.mark.asyncio
 
 
-# --- Fixtures ---
-# (Might move db_client and init_db to a central conftest.py later)
-
-
 @pytest.fixture(scope="function")
 async def work_order_repo(init_db):
     """Fixture to provide a clean WorkOrderRepo instance for each test."""

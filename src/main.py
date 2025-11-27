@@ -1,14 +1,12 @@
 import logging
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
 
-from src.exceptions.clients import (
-    ClientDatabaseError,
-    ClientNotFoundError,
-    DuplicateClientNIFError,
-    InvalidClientDataError,
-)
+
+from src.db.connection import auth_db_connect, auth_db_disconnect
+
 from src.exceptions.handlers import (
     active_work_order_exists_handler,
     client_database_error_handler,
@@ -25,14 +23,29 @@ from src.exceptions.work_orders import (
     WorkOrderNotFoundError,
     WorkOrderNumberConflictError,
 )
+from src.exceptions.clients import (
+    ClientDatabaseError,
+    ClientNotFoundError,
+    DuplicateClientNIFError,
+    InvalidClientDataError,
+)
 from src.logging_config import configure_logging
+from src.routes import auth, users
 
 # configure logging globally
 configure_logging()
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await auth_db_connect()
+    yield
+    await auth_db_disconnect()
+
+
 app = FastAPI(
-    # Register exception handlers
+    lifespan=lifespan,
     exception_handlers={
         WorkOrderNotFoundError: work_order_not_found_handler,
         ActiveWorkOrderExistsError: active_work_order_exists_handler,
@@ -43,7 +56,10 @@ app = FastAPI(
         InvalidClientDataError: invalid_client_data_handler,
         ClientDatabaseError: client_database_error_handler,
     }
+
 )
+app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(users.router, prefix="/users", tags=["Users"])
 
 
 @app.get("/ping")

@@ -4,6 +4,7 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
+
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
@@ -65,7 +66,6 @@ async def work_order_database_error_handler(request: Request, exc: WorkOrderData
             "operation": exc.operation,
         },
     )
-
 
 # ============================================================================
 # CLIENT EXCEPTION HANDLERS

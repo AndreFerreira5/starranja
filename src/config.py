@@ -142,6 +142,7 @@ class AuthSettings(BaseModel):
 class DatabaseSettings(BaseModel):
     # Database settings
     AUTH_DATABASE_URL: str | None = None
+    MONGO_DATABASE_URL: str | None = None
 
 
 class Settings(BaseSettings):

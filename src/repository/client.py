@@ -1,5 +1,6 @@
 import logging
 
+
 from beanie import PydanticObjectId
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
@@ -9,6 +10,7 @@ from src.exceptions.clients import (
     ClientNotFoundError,
     DuplicateClientNIFError,
 )
+
 from src.models.client import Client, ClientCreate, ClientUpdate
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ class ClientRepo:
         Raises:
             Exception: If the nif number already exists (unique constraint violation)
         """
+
         logger.info(f"Creating new client: {client_data.name}")
 
         try:
@@ -71,7 +74,6 @@ class ClientRepo:
         Returns:
             Client document if found, None otherwise
         """
-
         logger.info(f"Retrieving client with id: {client_id}")
 
         try:
