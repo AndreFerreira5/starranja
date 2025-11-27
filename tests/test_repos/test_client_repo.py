@@ -286,10 +286,10 @@ async def test_get_client_by_nif_not_found(client_repository):
     non_existent_nif = "999999999"
 
     # Act
-    retrieved_client = await client_repository.get_by_nif(non_existent_nif)
-
+    with pytest.raises(ClientNotFoundError) as exc_info:
+        await client_repository.get_by_nif(non_existent_nif)
     # Assert
-    assert retrieved_client is None, "Should return None for non-existent NIF"
+    assert "NIF:999999999" in exc_info.value.identifier
 
 
 # ============================================================================
@@ -333,10 +333,10 @@ async def test_update_client_not_found(client_repository):
     non_existent_id = ObjectId()
     update_data = ClientUpdate(name="Updated Name")
 
-    result = await client_repository.update(non_existent_id, update_data)
-
+    with pytest.raises(ClientNotFoundError) as exc_info:
+        await client_repository.update(non_existent_id, update_data)
     # --- Assertions ---
-    assert result is None
+    assert exc_info.value.identifier == str(non_existent_id)
 
 
 async def test_update_client_partial_fields(client_repository, sample_client):
@@ -378,11 +378,10 @@ async def test_update_client_nif_duplicate_fails(client_repository, sample_clien
     update_data = ClientUpdate(nif=sample_client_alternative.nif)
 
     # --- Assertions ---
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(DuplicateClientNIFError) as exc_info:
         await client_repository.update(sample_client.id, update_data)
 
-    error_msg = str(exc_info.value).lower()
-    assert "nif" in error_msg or "duplicate" in error_msg or "unique" in error_msg
+    assert exc_info.value.nif == sample_client_alternative.nif
 
 
 async def test_delete_client_success(client_repository, sample_client):
@@ -401,10 +400,13 @@ async def test_delete_client_success(client_repository, sample_client):
 async def test_delete_client_not_found(client_repository):
     """Test that deleting a non-existent ID returns False."""
 
-    was_deleted = await client_repository.delete(ObjectId())
+    non_existent_id = ObjectId()
 
     # --- Assertions ---
-    assert was_deleted is False
+    with pytest.raises(ClientNotFoundError) as exc_info:
+        await client_repository.delete(non_existent_id)
+
+    assert exc_info.value.identifier == str(non_existent_id)
 
 
 async def test_delete_client_invalid_id(client_repository):
