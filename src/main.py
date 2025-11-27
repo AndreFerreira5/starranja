@@ -3,8 +3,18 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 
-from src.api.exception_handlers import (
+from src.exceptions.clients import (
+    ClientDatabaseError,
+    ClientNotFoundError,
+    DuplicateClientNIFError,
+    InvalidClientDataError,
+)
+from src.exceptions.handlers import (
     active_work_order_exists_handler,
+    client_database_error_handler,
+    client_not_found_handler,
+    duplicate_client_nif_handler,
+    invalid_client_data_handler,
     work_order_database_error_handler,
     work_order_not_found_handler,
     work_order_number_conflict_handler,
@@ -28,6 +38,10 @@ app = FastAPI(
         ActiveWorkOrderExistsError: active_work_order_exists_handler,
         WorkOrderNumberConflictError: work_order_number_conflict_handler,
         WorkOrderDatabaseError: work_order_database_error_handler,
+        ClientNotFoundError: client_not_found_handler,
+        DuplicateClientNIFError: duplicate_client_nif_handler,
+        InvalidClientDataError: invalid_client_data_handler,
+        ClientDatabaseError: client_database_error_handler,
     }
 )
 

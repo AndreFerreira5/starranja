@@ -4,6 +4,8 @@ import pytest
 from bson import ObjectId
 from pydantic_core._pydantic_core import ValidationError
 
+from src.exceptions.clients import ClientNotFoundError, DuplicateClientNIFError
+
 # Adjust imports based on your project structure
 from src.models.client import AddressUpdate, Client, ClientCreate, ClientUpdate
 from src.repository.client import ClientRepo
@@ -116,7 +118,7 @@ async def test_create_client_duplicate_nif_fails(client_repository, sample_clien
     )
 
     # --- Assertions ---
-    with pytest.raises(Exception) as exc_info:
+    with pytest.raises(DuplicateClientNIFError) as exc_info:
         await client_repository.create_client(duplicate_client_data)
 
     error_msg = str(exc_info.value).lower()
@@ -195,10 +197,11 @@ async def test_get_client_by_id_not_found(client_repository):
     non_existent_id = ObjectId()
 
     # Act
-    retrieved_client = await client_repository.get_by_id(non_existent_id)
+    with pytest.raises(ClientNotFoundError) as exc_info:
+        await client_repository.get_by_id(non_existent_id)
 
     # Assert
-    assert retrieved_client is None, "Should return None for non-existent client"
+    assert exc_info.value.identifier == str(non_existent_id)
 
 
 async def test_get_client_by_id_invalid_id_format(client_repository):

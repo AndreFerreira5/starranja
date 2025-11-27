@@ -4,6 +4,11 @@ from beanie import PydanticObjectId
 from bson import ObjectId
 from pymongo.errors import DuplicateKeyError
 
+from src.exceptions.clients import (
+    ClientDatabaseError,
+    ClientNotFoundError,
+    DuplicateClientNIFError,
+)
 from src.models.client import Client, ClientCreate, ClientUpdate
 
 logger = logging.getLogger(__name__)
@@ -32,7 +37,7 @@ class ClientRepo:
             # Check for duplicate NIF first (mongomock may not enforce unique index)
             existing_client = await Client.find_one(Client.nif == client_data.nif)
             if existing_client:
-                raise ValueError(f"Client with NIF {client_data.nif} already exists")
+                raise DuplicateClientNIFError(client_data.nif)
 
             # Create Client document from ClientCreate data
             client = Client(**client_data.model_dump())
@@ -43,14 +48,18 @@ class ClientRepo:
             logger.info(f"Successfully created client with id: {client.id}")
             return client
 
+        except DuplicateClientNIFError:
+            # Re-raise our custom exception
+            raise
+
         except DuplicateKeyError as e:
-            logger.error(f"Duplicate NIF: {client_data.nif}")
-            raise ValueError(f"Client with NIF {client_data.nif} already exists") from e
-        except ValueError:
-            raise
+            # MongoDB duplicate key error
+            logger.error(f"Duplicate key error for NIF: {client_data.nif}")
+            raise DuplicateClientNIFError(client_data.nif) from e
+
         except Exception as e:
-            logger.error(f"Error creating client: {str(e)}")
-            raise
+            logger.error(f"Unexpected error creating client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("create_client", str(e)) from e
 
     async def get_by_id(self, client_id: ObjectId) -> Client | None:
         """
@@ -73,13 +82,18 @@ class ClientRepo:
             # Use Beanie's get method
             client = await Client.get(client_id)
 
-            logger.info(f"Successfully retrieved client with id: {client_id}")
+            if not client:
+                raise ClientNotFoundError(str(client_id))
 
+            logger.info(f"Successfully retrieved client with id: {client_id}")
             return client
 
-        except Exception as e:
-            logger.error(f"Error retrieving client by ID: {str(e)}")
+        except ClientNotFoundError:
             raise
+
+        except Exception as e:
+            logger.error(f"Error retrieving client by ID: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_id", str(e)) from e
 
     async def get_all_clients(self) -> list[Client]:
         """
@@ -98,8 +112,8 @@ class ClientRepo:
             return clients
 
         except Exception as e:
-            logger.error(f"Error retrieving all clients: {str(e)}")
-            raise
+            logger.error(f"Error retrieving all clients: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_all_clients", str(e)) from e
 
     async def get_by_nif(self, nif: str) -> Client | None:
         """
@@ -122,9 +136,12 @@ class ClientRepo:
 
             return client
 
-        except Exception as e:
-            logger.error(f"Error retrieving client by NIF: {str(e)}")
+        except ClientNotFoundError:
             raise
+
+        except Exception as e:
+            logger.error(f"Error retrieving client by NIF: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_nif", str(e)) from e
 
     async def update(self, client_id: ObjectId, update_data: ClientUpdate) -> Client | None:
         """
@@ -152,24 +169,28 @@ class ClientRepo:
             if "nif" in update_dict:
                 existing_client = await Client.find_one(Client.nif == update_dict["nif"])
                 if existing_client and existing_client.id != client_id:
-                    raise ValueError("Cannot update: NIF already exists")
+                    raise DuplicateClientNIFError(update_dict["nif"])
 
             # Update the client fields
             for field, value in update_dict.items():
                 setattr(client, field, value)
 
-            # Save the updated client
-            await client.save()
+            # Save changes
+            try:
+                await client.save()
+                logger.info(f"Successfully updated client: {client_id}")
+                return client
 
-            logger.info(f"Successfully updated client with id: {client_id}")
+            except DuplicateKeyError as e:
+                logger.error(f"Duplicate key error during update: {client_id}")
+                raise DuplicateClientNIFError(update_dict.get("nif", "unknown")) from e
 
-            return client
-
-        except ValueError:
+        except (ClientNotFoundError, DuplicateClientNIFError):
             raise
+
         except Exception as e:
-            logger.error(f"Error updating client: {str(e)}")
-            raise
+            logger.error(f"Error updating client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("update", str(e)) from e
 
     async def delete(self, client_id: ObjectId) -> bool:
         """
@@ -201,6 +222,8 @@ class ClientRepo:
             logger.info(f"Successfully deleted client: {client_id}")
             return True
 
-        except Exception as e:
-            logger.error(f"Error deleting client: {str(e)}")
+        except ClientNotFoundError:
             raise
+        except Exception as e:
+            logger.error(f"Error deleting client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("delete", str(e)) from e
