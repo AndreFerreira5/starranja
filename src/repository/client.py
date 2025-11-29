@@ -124,6 +124,10 @@ class ClientRepo:
 
         Returns:
             Client document if found, None otherwise
+
+        Raises:
+            ClientNotFoundError: If client with NIF is not found
+            ClientDatabaseError: If an unexpected database error occurs
         """
 
         logger.info(f"Retrieving client with nif: {nif}")
@@ -131,6 +135,9 @@ class ClientRepo:
         try:
             # Use Beanie's find_one method with filter
             client = await Client.find_one(Client.nif == nif)
+
+            if not client:
+                raise ClientNotFoundError(f"NIF:{nif}")
 
             logger.info(f"Successfully retrieved client with nif: {nif}")
 
@@ -160,7 +167,7 @@ class ClientRepo:
             client = await Client.get(client_id)
 
             if not client:
-                return None
+                raise ClientNotFoundError(str(client_id))
 
             # Get only the fields that were explicitly set (exclude unset fields)
             update_dict = update_data.model_dump(exclude_unset=True)
@@ -202,6 +209,10 @@ class ClientRepo:
         Returns:
             True if client was deleted, False if not found
 
+        Raises:
+            ClientNotFoundError: If client is not found
+            ClientDatabaseError: If an unexpected database error occurs
+
         Note:
             Consider implementing soft delete or checking for active work orders
             before allowing deletion (business rule validation)
@@ -214,7 +225,7 @@ class ClientRepo:
             client = await Client.get(client_id)
 
             if not client:
-                return False
+                raise ClientNotFoundError(str(client_id))
 
             # Delete the client
             await client.delete()
