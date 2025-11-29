@@ -29,7 +29,8 @@ class ClientRepo:
             Created client data with _id, createdAt, and updatedAt fields
 
         Raises:
-            Exception: If the nif number already exists (unique constraint violation)
+            DuplicateClientNIFError: If the NIF already exists
+            ClientDatabaseError: If an unexpected database error occurs
         """
 
         logger.info(f"Creating new client: {client_data.name}")
@@ -71,6 +72,10 @@ class ClientRepo:
 
         Returns:
             Client document if found, None otherwise
+
+        Raises:
+            ClientNotFoundError: If client is not found
+            ClientDatabaseError: If an unexpected database error occurs
         """
         logger.info(f"Retrieving client with id: {client_id}")
 
@@ -101,6 +106,9 @@ class ClientRepo:
 
         Returns:
             List of all Client documents
+
+        Raises:
+            ClientDatabaseError: If an unexpected database error occurs
         """
         logger.info("Retrieving all clients")
 
@@ -160,6 +168,11 @@ class ClientRepo:
 
         Returns:
             Updated client document if found, None otherwise
+
+        Raises:
+            ClientNotFoundError: If client is not found
+            DuplicateClientNIFError: If updating NIF to a duplicate value
+            ClientDatabaseError: If an unexpected database error occurs
         """
         logger.info(f"Updating client with id: {client_id}")
         try:
