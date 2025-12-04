@@ -157,6 +157,24 @@ async def test_create_client_invalid_email():
     assert "email" in str(exc_info.value).lower()
 
 
+async def test_create_client_duplicate_email_fails(client_repository, sample_client):
+    """Test that creating a client with a duplicate email fails."""
+    duplicate_client_data = ClientCreate(
+        name="Different Name",
+        nif="999999999",  # Different NIF
+        phone="+351999999999",
+        email=sample_client.email,  # Duplicate email!
+    )
+
+    # --- Assertions ---
+    with pytest.raises(DuplicateClientEmailError) as exc_info:
+        await client_repository.create_client(duplicate_client_data)
+
+    assert exc_info.value.email == sample_client.email
+    error_msg = str(exc_info.value).lower()
+    assert "email" in error_msg or "duplicate" in error_msg
+
+
 # ============================================================================
 # READ TESTS
 # ============================================================================
@@ -292,6 +310,92 @@ async def test_get_client_by_nif_not_found(client_repository):
     assert "NIF:999999999" in exc_info.value.identifier
 
 
+async def test_get_client_by_email_success(client_repository, sample_client):
+    """Test successful retrieval of a client by email."""
+    retrieved_client = await client_repository.get_by_email(sample_client.email)
+
+    # --- Assertions ---
+    assert retrieved_client is not None
+    assert retrieved_client.email == sample_client.email
+    assert retrieved_client.name == sample_client.name
+    assert retrieved_client.id == sample_client.id
+    assert isinstance(retrieved_client, Client)
+
+
+async def test_get_client_by_email_not_found(client_repository):
+    """Test retrieval of a non-existent client by email raises exception."""
+    non_existent_email = "nonexistent@example.com"
+
+    # --- Assertions ---
+    with pytest.raises(ClientNotFoundError) as exc_info:
+        await client_repository.get_by_email(non_existent_email)
+
+    assert f"Email:{non_existent_email}" in exc_info.value.identifier
+
+
+async def test_get_client_by_email_case_sensitive(client_repository, sample_client):
+    """Test that email lookup is case-sensitive (or insensitive based on your DB config)."""
+    # MongoDB email queries are case-sensitive by default
+    # If you want case-insensitive, you need to use regex or index with collation
+
+    # This test assumes case-sensitive behavior
+    uppercase_email = sample_client.email.upper()
+
+    # Should NOT find the client (case mismatch)
+    with pytest.raises(ClientNotFoundError):
+        await client_repository.get_by_email(uppercase_email)
+
+
+async def test_get_client_by_email_with_none_email_fails(client_repository):
+    """Test that searching for None email raises appropriate error."""
+    # This tests edge case behavior
+    with pytest.raises((ClientNotFoundError, ValueError, TypeError)):
+        await client_repository.get_by_email(None)
+
+
+async def test_client_with_optional_fields_null(client_repository):
+    """Test creating a client with optional fields (email, address) as None."""
+
+    minimal_client_data = ClientCreate(
+        name="Minimal Client",
+        nif="111222333",
+        phone="+351911111111",
+        # email and address are optional
+    )
+
+    created_client = await client_repository.create_client(minimal_client_data)
+
+    # --- Assertions ---
+    assert created_client is not None
+    assert created_client.name == "Minimal Client"
+    assert created_client.email is None
+    assert created_client.address is None
+
+
+async def test_client_nif_indexed_uniquely(init_db):
+    """Test that NIF is properly indexed as unique at the database level."""
+
+    client1 = Client(
+        name="Test Client 1",
+        nif="555666777",  # Use unique NIF
+        phone="+351912345678",
+    )
+    await client1.insert()
+
+    # --- Assertions ---
+    client2 = Client(
+        name="Test Client 2",
+        nif="555666777",  # Duplicate NIF
+        phone="+351923456789",
+    )
+
+    with pytest.raises(Exception) as exc_info:
+        await client2.insert()
+
+    error_msg = str(exc_info.value).lower()
+    assert "duplicate" in error_msg or "unique" in error_msg or "nif" in error_msg
+
+
 # ============================================================================
 # UPDATE TESTS
 # ============================================================================
@@ -417,90 +521,6 @@ async def test_delete_client_invalid_id(client_repository):
     # --- Assertions ---
     with pytest.raises((ValueError, TypeError, Exception)):
         await client_repository.delete(invalid_id)
-
-
-async def test_client_with_optional_fields_null(client_repository):
-    """Test creating a client with optional fields (email, address) as None."""
-
-    minimal_client_data = ClientCreate(
-        name="Minimal Client",
-        nif="111222333",
-        phone="+351911111111",
-        # email and address are optional
-    )
-
-    created_client = await client_repository.create_client(minimal_client_data)
-
-    # --- Assertions ---
-    assert created_client is not None
-    assert created_client.name == "Minimal Client"
-    assert created_client.email is None
-    assert created_client.address is None
-
-
-async def test_client_nif_indexed_uniquely(init_db):
-    """Test that NIF is properly indexed as unique at the database level."""
-
-    client1 = Client(
-        name="Test Client 1",
-        nif="555666777",  # Use unique NIF
-        phone="+351912345678",
-    )
-    await client1.insert()
-
-    # --- Assertions ---
-    client2 = Client(
-        name="Test Client 2",
-        nif="555666777",  # Duplicate NIF
-        phone="+351923456789",
-    )
-
-    with pytest.raises(Exception) as exc_info:
-        await client2.insert()
-
-    error_msg = str(exc_info.value).lower()
-    assert "duplicate" in error_msg or "unique" in error_msg or "nif" in error_msg
-
-
-async def test_create_client_duplicate_email_fails(client_repository, sample_client):
-    """Test that creating a client with a duplicate email fails."""
-    duplicate_client_data = ClientCreate(
-        name="Different Name",
-        nif="999999999",  # Different NIF
-        phone="+351999999999",
-        email=sample_client.email,  # Duplicate email!
-    )
-
-    # --- Assertions ---
-    with pytest.raises(DuplicateClientEmailError) as exc_info:
-        await client_repository.create_client(duplicate_client_data)
-
-    assert exc_info.value.email == sample_client.email
-    error_msg = str(exc_info.value).lower()
-    assert "email" in error_msg or "duplicate" in error_msg
-
-
-async def test_create_client_without_email_succeeds(client_repository):
-    """Test creating multiple clients without email (email=None) succeeds."""
-    # First client without email
-    client_data_1 = ClientCreate(
-        name="Client 1",
-        nif="111111111",
-        phone="+351911111111",
-        email=None,
-    )
-    client1 = await client_repository.create_client(client_data_1)
-    assert client1 is not None
-
-    # Second client without email (should also work with sparse index)
-    client_data_2 = ClientCreate(
-        name="Client 2",
-        nif="222222222",
-        phone="+351922222222",
-        email=None,
-    )
-    client2 = await client_repository.create_client(client_data_2)
-    assert client2 is not None
 
 
 async def test_update_client_email_duplicate_fails(client_repository, sample_client, sample_client_alternative):

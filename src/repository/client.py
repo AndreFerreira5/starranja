@@ -83,7 +83,7 @@ class ClientRepo:
             logger.error(f"Unexpected error creating client: {str(e)}", exc_info=True)
             raise ClientDatabaseError("create_client", str(e)) from e
 
-    async def get_by_id(self, client_id: ObjectId) -> Client | None:
+    async def get_by_id(self, client_id: ObjectId | PydanticObjectId) -> Client:
         """
         Retrieve a client by its ID.
 
@@ -91,7 +91,7 @@ class ClientRepo:
             client_id: MongoDB ObjectId of the client
 
         Returns:
-            Client document if found, None otherwise
+            Client document if found
 
         Raises:
             ClientNotFoundError: If client is not found
@@ -143,7 +143,7 @@ class ClientRepo:
             logger.error(f"Error retrieving all clients: {str(e)}", exc_info=True)
             raise ClientDatabaseError("get_all_clients", str(e)) from e
 
-    async def get_by_nif(self, nif: str) -> Client | None:
+    async def get_by_nif(self, nif: str) -> Client:
         """
         Retrieve a client by its nif number.
 
@@ -178,7 +178,38 @@ class ClientRepo:
             logger.error(f"Error retrieving client by NIF: {str(e)}", exc_info=True)
             raise ClientDatabaseError("get_by_nif", str(e)) from e
 
-    async def update(self, client_id: ObjectId, update_data: ClientUpdate) -> Client | None:
+    async def get_by_email(self, email: str) -> Client:
+        """
+        Retrieve a client by its email address.
+
+        Args:
+            email: Client email address
+
+        Returns:
+            Client document
+
+        Raises:
+            ClientNotFoundError: If client with email is not found
+            ClientDatabaseError: If an unexpected database error occurs
+        """
+        logger.info(f"Retrieving client with email: {email}")
+
+        try:
+            client = await Client.find_one(Client.email == email)
+
+            if not client:
+                raise ClientNotFoundError(f"Email:{email}")
+
+            logger.info(f"Successfully retrieved client with email: {email}")
+            return client
+
+        except ClientNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Error retrieving client by email: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_email", str(e)) from e
+
+    async def update(self, client_id: ObjectId | PydanticObjectId, update_data: ClientUpdate) -> Client:
         """
         Update an existing client.
 
@@ -246,7 +277,7 @@ class ClientRepo:
             logger.error(f"Error updating client: {str(e)}", exc_info=True)
             raise ClientDatabaseError("update", str(e)) from e
 
-    async def delete(self, client_id: ObjectId) -> bool:
+    async def delete(self, client_id: ObjectId | PydanticObjectId) -> bool:
         """
         Delete a client from the database.
 
