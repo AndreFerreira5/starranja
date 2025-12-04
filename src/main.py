@@ -8,6 +8,7 @@ from src.db.connection import auth_db_connect, auth_db_disconnect
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
+    DuplicateClientEmailError,
     DuplicateClientNIFError,
     InvalidClientDataError,
 )
@@ -15,6 +16,7 @@ from src.exceptions.handlers import (
     active_work_order_exists_handler,
     client_database_error_handler,
     client_not_found_handler,
+    duplicate_client_email_handler,
     duplicate_client_nif_handler,
     invalid_client_data_handler,
     work_order_database_error_handler,
@@ -51,6 +53,7 @@ app = FastAPI(
         WorkOrderDatabaseError: work_order_database_error_handler,
         ClientNotFoundError: client_not_found_handler,
         DuplicateClientNIFError: duplicate_client_nif_handler,
+        DuplicateClientEmailError: duplicate_client_email_handler,
         InvalidClientDataError: invalid_client_data_handler,
         ClientDatabaseError: client_database_error_handler,
     },

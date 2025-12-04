@@ -7,6 +7,7 @@ from starlette.responses import Response
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
+    DuplicateClientEmailError,
     DuplicateClientNIFError,
     InvalidClientDataError,
 )
@@ -93,6 +94,19 @@ async def duplicate_client_nif_handler(request: Request, exc: DuplicateClientNIF
             "message": str(exc),
             "nif": exc.nif,
             "field": "nif",
+        },
+    )
+
+
+async def duplicate_client_email_handler(request: Request, exc: DuplicateClientEmailError) -> Response:
+    """Handle DuplicateClientEmailError with 409 Conflict response."""
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "error": "duplicate_email",
+            "message": str(exc),
+            "email": exc.email,
+            "field": "email",
         },
     )
 

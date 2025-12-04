@@ -7,6 +7,7 @@ from pymongo.errors import DuplicateKeyError
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
+    DuplicateClientEmailError,
     DuplicateClientNIFError,
 )
 from src.models.client import Client, ClientCreate, ClientUpdate
@@ -30,6 +31,7 @@ class ClientRepo:
 
         Raises:
             DuplicateClientNIFError: If the NIF already exists
+            DuplicateClientEmailError: If the Email already exists
             ClientDatabaseError: If an unexpected database error occurs
         """
 
@@ -40,6 +42,12 @@ class ClientRepo:
             existing_client = await Client.find_one(Client.nif == client_data.nif)
             if existing_client:
                 raise DuplicateClientNIFError(client_data.nif)
+
+            # Check for duplicate emails
+            if client_data.email:
+                existing_client_email = await Client.find_one(Client.email == client_data.email)
+                if existing_client_email:
+                    raise DuplicateClientEmailError(client_data.email)
 
             # Create Client document from ClientCreate data
             client = Client(**client_data.model_dump())
@@ -54,10 +62,22 @@ class ClientRepo:
             # Re-raise our custom exception
             raise
 
+        except DuplicateClientEmailError:
+            # Re-raise our custom exception
+            raise
+
         except DuplicateKeyError as e:
-            # MongoDB duplicate key error
-            logger.error(f"Duplicate key error for NIF: {client_data.nif}")
-            raise DuplicateClientNIFError(client_data.nif) from e
+            # Determine which field caused the duplicate
+            error_msg = str(e).lower()
+            logger.error(f"Duplicate key error: {error_msg}")
+
+            if "nif" in error_msg:
+                raise DuplicateClientNIFError(client_data.nif) from e
+            elif "email" in error_msg and client_data.email:
+                raise DuplicateClientEmailError(client_data.email) from e
+            else:
+                # Fallback for unexpected duplicate key errors
+                raise ClientDatabaseError("create_client", str(e)) from e
 
         except Exception as e:
             logger.error(f"Unexpected error creating client: {str(e)}", exc_info=True)
@@ -172,6 +192,7 @@ class ClientRepo:
         Raises:
             ClientNotFoundError: If client is not found
             DuplicateClientNIFError: If updating NIF to a duplicate value
+            DuplicateClientEmailError: If updating Email to a duplicate value
             ClientDatabaseError: If an unexpected database error occurs
         """
         logger.info(f"Updating client with id: {client_id}")
@@ -191,6 +212,12 @@ class ClientRepo:
                 if existing_client and existing_client.id != client_id:
                     raise DuplicateClientNIFError(update_dict["nif"])
 
+            # If updating Email, check for duplicates
+            if "email" in update_dict and update_dict["email"]:
+                existing_client_email = await Client.find_one(Client.email == update_dict["email"])
+                if existing_client_email and existing_client_email.id != client_id:
+                    raise DuplicateClientEmailError(update_dict["email"])
+
             # Update the client fields
             for field, value in update_dict.items():
                 setattr(client, field, value)
@@ -202,10 +229,17 @@ class ClientRepo:
                 return client
 
             except DuplicateKeyError as e:
-                logger.error(f"Duplicate key error during update: {client_id}")
-                raise DuplicateClientNIFError(update_dict.get("nif", "unknown")) from e
+                error_msg = str(e).lower()
+                logger.error(f"Duplicate key error during update: {error_msg}")
 
-        except (ClientNotFoundError, DuplicateClientNIFError):
+                if "nif" in error_msg:
+                    raise DuplicateClientNIFError(update_dict.get("nif", "unknown")) from e
+                elif "email" in error_msg:
+                    raise DuplicateClientEmailError(update_dict.get("email", "unknown")) from e
+                else:
+                    raise ClientDatabaseError("update", str(e)) from e
+
+        except (ClientNotFoundError, DuplicateClientNIFError, DuplicateClientEmailError):
             raise
 
         except Exception as e:

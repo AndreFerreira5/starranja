@@ -23,6 +23,14 @@ class DuplicateClientNIFError(ClientError):
         super().__init__(f"Client with NIF {nif} already exists. NIF must be unique.")
 
 
+class DuplicateClientEmailError(ClientError):
+    """Raised when attempting to create/update a client with a duplicate Email."""
+
+    def __init__(self, email: str):
+        self.email = email
+        super().__init__(f"Client with Email {email} already exists. Email must be unique.")
+
+
 class ClientDatabaseError(ClientError):
     """Raised when a database operation fails unexpectedly."""
 

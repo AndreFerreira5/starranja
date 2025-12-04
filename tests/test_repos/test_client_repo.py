@@ -4,7 +4,7 @@ import pytest
 from bson import ObjectId
 from pydantic_core._pydantic_core import ValidationError
 
-from src.exceptions.clients import ClientNotFoundError, DuplicateClientNIFError
+from src.exceptions.clients import ClientNotFoundError, DuplicateClientEmailError, DuplicateClientNIFError
 
 # Adjust imports based on your project structure
 from src.models.client import AddressUpdate, Client, ClientCreate, ClientUpdate
@@ -460,3 +460,82 @@ async def test_client_nif_indexed_uniquely(init_db):
 
     error_msg = str(exc_info.value).lower()
     assert "duplicate" in error_msg or "unique" in error_msg or "nif" in error_msg
+
+
+async def test_create_client_duplicate_email_fails(client_repository, sample_client):
+    """Test that creating a client with a duplicate email fails."""
+    duplicate_client_data = ClientCreate(
+        name="Different Name",
+        nif="999999999",  # Different NIF
+        phone="+351999999999",
+        email=sample_client.email,  # Duplicate email!
+    )
+
+    # --- Assertions ---
+    with pytest.raises(DuplicateClientEmailError) as exc_info:
+        await client_repository.create_client(duplicate_client_data)
+
+    assert exc_info.value.email == sample_client.email
+    error_msg = str(exc_info.value).lower()
+    assert "email" in error_msg or "duplicate" in error_msg
+
+
+async def test_create_client_without_email_succeeds(client_repository):
+    """Test creating multiple clients without email (email=None) succeeds."""
+    # First client without email
+    client_data_1 = ClientCreate(
+        name="Client 1",
+        nif="111111111",
+        phone="+351911111111",
+        email=None,
+    )
+    client1 = await client_repository.create_client(client_data_1)
+    assert client1 is not None
+
+    # Second client without email (should also work with sparse index)
+    client_data_2 = ClientCreate(
+        name="Client 2",
+        nif="222222222",
+        phone="+351922222222",
+        email=None,
+    )
+    client2 = await client_repository.create_client(client_data_2)
+    assert client2 is not None
+
+
+async def test_update_client_email_duplicate_fails(client_repository, sample_client, sample_client_alternative):
+    """Test that updating a client's email to a duplicate value fails."""
+    update_data = ClientUpdate(email=sample_client_alternative.email)
+
+    # --- Assertions ---
+    with pytest.raises(DuplicateClientEmailError) as exc_info:
+        await client_repository.update(sample_client.id, update_data)
+
+    assert exc_info.value.email == sample_client_alternative.email
+
+
+async def test_update_client_email_to_unique_succeeds(client_repository, sample_client):
+    """Test that updating a client's email to a unique value succeeds."""
+    new_email = "new.unique.email@example.com"
+    update_data = ClientUpdate(email=new_email)
+
+    updated_client = await client_repository.update(sample_client.id, update_data)
+
+    # --- Assertions ---
+    assert updated_client is not None
+    assert updated_client.email == new_email
+
+    # Verify in DB
+    found = await Client.get(updated_client.id)
+    assert found.email == new_email
+
+
+async def test_update_client_email_to_none_succeeds(client_repository, sample_client):
+    """Test that removing a client's email (setting to None) succeeds."""
+    update_data = ClientUpdate(email=None)
+
+    updated_client = await client_repository.update(sample_client.id, update_data)
+
+    # --- Assertions ---
+    assert updated_client is not None
+    assert updated_client.email is None
