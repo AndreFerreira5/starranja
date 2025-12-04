@@ -61,7 +61,7 @@ class WorkOrderItem(BaseModel):
     # --- Custom Validators for Decimal128 ---
     @field_validator("quantity", "unit_price_without_iva")
     @staticmethod
-    def validate_positive_decimal(cls, v: Decimal128) -> Decimal128:
+    def validate_positive_decimal(v: Decimal128) -> Decimal128:
         """Ensures the value is non-negative."""
         if v.to_decimal() < 0:
             raise ValueError("Must be greater than or equal to 0")
@@ -69,7 +69,7 @@ class WorkOrderItem(BaseModel):
 
     @field_validator("iva_rate")
     @staticmethod
-    def validate_iva_rate(cls, v: Decimal128) -> Decimal128:
+    def validate_iva_rate(v: Decimal128) -> Decimal128:
         """Ensures IVA rate is between 0 and 1."""
         decimal_value = v.to_decimal()
         if not (0 <= decimal_value <= 1):
