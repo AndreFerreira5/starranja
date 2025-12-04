@@ -6,7 +6,7 @@ from uuid import UUID
 from beanie import Document, Indexed
 from bson import ObjectId
 from bson.decimal128 import Decimal128
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import IndexModel
 
 
@@ -51,12 +51,30 @@ class WorkOrderItem(BaseModel):
     type: WorkOrderItemType
     description: str
     reference: str
-    quantity: Decimal128 = Field(..., ge=0)
+    quantity: Decimal128
     unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
-    iva_rate: Decimal128 = Field(..., ge=0, le=1)
+    iva_rate: Decimal128 = Field(..., alias="ivaRate")
     total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
+
+    # --- Custom Validators for Decimal128 ---
+    @field_validator("quantity", "unit_price_without_iva")
+    @staticmethod
+    def validate_positive_decimal(v: Decimal128) -> Decimal128:
+        """Ensures the value is non-negative."""
+        if v.to_decimal() < 0:
+            raise ValueError("Must be greater than or equal to 0")
+        return v
+
+    @field_validator("iva_rate")
+    @staticmethod
+    def validate_iva_rate(v: Decimal128) -> Decimal128:
+        """Ensures IVA rate is between 0 and 1."""
+        decimal_value = v.to_decimal()
+        if not (0 <= decimal_value <= 1):
+            raise ValueError("IVA rate must be between 0 and 1")
+        return v
 
 
 # ---- Beanie Document (DB model) ----

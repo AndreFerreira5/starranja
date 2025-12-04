@@ -2,14 +2,22 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from bson import ObjectId
+from bson import Decimal128, ObjectId
 
 from src.exceptions.work_orders import ActiveWorkOrderExistsError
 
 # Import  models
 from src.models.client import Client
 from src.models.vehicle import Vehicle
-from src.models.work_orders import Quote, WorkOrder, WorkOrderCreate, WorkOrderStatus, WorkOrderUpdate
+from src.models.work_orders import (
+    Quote,
+    WorkOrder,
+    WorkOrderCreate,
+    WorkOrderItem,
+    WorkOrderItemType,
+    WorkOrderStatus,
+    WorkOrderUpdate,
+)
 
 # Import the repository to test
 from src.repository.work_orders import WorkOrderRepo
@@ -166,7 +174,12 @@ async def test_get_work_orders_by_client_id(work_order_repo, sample_work_order, 
 async def test_update_work_order_success(work_order_repo, sample_work_order):
     """Test updating a work order (e.g., adding a quote and changing status)."""
     update_data = WorkOrderUpdate(
-        status=WorkOrderStatus.AWAITING_APPROVAL, quote=Quote(diagnostic="Needs new flux capacitor.")
+        status=WorkOrderStatus.AWAITING_APPROVAL,
+        quote=Quote(
+            clientObservations="Customer hears a rattle.",
+            diagnostic="Needs new flux capacitor.",
+            is_approved=True,  # Simulating approval
+        ),
     )
 
     updated_wo = await work_order_repo.update(sample_work_order.id, update_data)
@@ -176,7 +189,56 @@ async def test_update_work_order_success(work_order_repo, sample_work_order):
     assert updated_wo.id == sample_work_order.id
     assert updated_wo.status == WorkOrderStatus.AWAITING_APPROVAL
     assert updated_wo.quote.diagnostic == "Needs new flux capacitor."
+    assert updated_wo.quote.client_observations == "Customer hears a rattle."
+    assert updated_wo.quote.is_approved is True
     assert updated_wo.updated_at > sample_work_order.updated_at
+
+
+async def test_add_items_to_work_order(work_order_repo, sample_work_order):
+    """Test adding items (Parts/Labor) to the work order."""
+
+    # Create specific items using Decimal128
+    item_1 = WorkOrderItem(
+        type=WorkOrderItemType.PART,
+        description="Brake Pads",
+        reference="BP-001",
+        quantity=Decimal128("2"),
+        unit_price_without_iva=Decimal128("50.00"),
+        iva_rate=Decimal128("0.23"),
+        total_price_with_iva=Decimal128("123.00"),
+    )
+
+    item_2 = WorkOrderItem(
+        type=WorkOrderItemType.LABOR,
+        description="Brake Replacement Service",
+        reference="SERV-001",
+        quantity=Decimal128("1.5"),
+        unit_price_without_iva=Decimal128("40.00"),
+        iva_rate=Decimal128("0.23"),
+        total_price_with_iva=Decimal128("73.80"),
+    )
+
+    update_data = WorkOrderUpdate(items=[item_1, item_2])
+
+    updated_wo = await work_order_repo.update(sample_work_order.id, update_data)
+
+    # Assertions
+    assert updated_wo is not None
+
+    # Verify list length
+    assert len(updated_wo.items) == 2
+
+    # Verify content persistence
+    saved_part = updated_wo.items[0]
+    assert saved_part.reference == "BP-001"
+    assert saved_part.type == WorkOrderItemType.PART
+
+    # Verify Decimal128 persistence (compare as strings to avoid precision issues)
+    assert str(saved_part.unit_price_without_iva) == "50.00"
+
+    saved_labor = updated_wo.items[1]
+    assert saved_labor.reference == "SERV-001"
+    assert saved_labor.type == WorkOrderItemType.LABOR
 
 
 async def test_delete_work_order_success(work_order_repo, sample_work_order):
