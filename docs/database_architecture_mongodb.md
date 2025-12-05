@@ -17,7 +17,7 @@ The model is **hybrid**, using a combination of **Referencing** (for data consis
 
 ## 2. Visual Schema Diagram
 
-![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v3.png)
+![StArranja Database (MongoDB) Schema](./images/mongodb-desing-v4.png)
 
 ---
 
@@ -209,7 +209,35 @@ Stores all service bookings and manages the workshop's agenda (RF02).
 
 ---
 
-## 8. PostgreSQL User Integration (The "Hydration" Contract)
+## 8. Collection: `supplierOrders`
+
+Manages orders to external providers (RF07). Handles both vehicle-specific parts and general internal supplies (RB05).
+
+### Schema Definition
+
+| Field | Type | Required | Description |
+| :--- | :--- |:---------|:--------------------------------------------------------------------------|
+| `_id` | `ObjectId` | ✓        | Unique document identifier. |
+| `supplierName` | `String` | ✓        | Name of the vendor (e.g., "AutoParts Co"). |
+| `description` | `String` | ✓        | Summary of the order (e.g., "Filters for WO-2025-001"). |
+| `workOrderId` | `ObjectId` |          | **Optional Reference** to `workOrders`. Null if order is for general supplies. |
+| `status` | `String` | ✓        | Enum: `Pending`, `Ordered`, `Shipped`, `Received`, `Cancelled`. |
+| `orderDate` | `ISODate` | ✓        | Date the order was placed. |
+| `createdById` | `String (UUID)` | ✓        | **Reference** to the user who placed the order. |
+| `createdAt` | `ISODate` | ✓        | Timestamp creation. |
+| `updatedAt` | `ISODate` | ✓        | Timestamp update. |
+
+### Indexes
+
+| Field(s) | Type | Purpose |
+| :--- | :--- | :--- |
+| `{ workOrderId: 1 }` | Simple | Fast lookup of all orders related to a specific repair job. |
+| `{ status: 1 }` | Simple | Dashboard query: "Show all parts waiting to be received". |
+| `{ createdAt: -1 }` | Simple | Sort orders by newest first. |
+| `{ supplierName: 1 }` | Simple | Reporting: History by vendor. |
+
+---
+## 9. PostgreSQL User Integration (The "Hydration" Contract)
 
 **This section defines the "contract" for handling user data, as specified in RNF02.**
 
