@@ -1,7 +1,15 @@
 import logging
 
+from beanie import PydanticObjectId
 from bson import ObjectId
+from pymongo.errors import DuplicateKeyError
 
+from src.exceptions.clients import (
+    ClientDatabaseError,
+    ClientNotFoundError,
+    DuplicateClientEmailError,
+    DuplicateClientNIFError,
+)
 from src.models.client import Client, ClientCreate, ClientUpdate
 
 logger = logging.getLogger(__name__)
@@ -22,13 +30,60 @@ class ClientRepo:
             Created client data with _id, createdAt, and updatedAt fields
 
         Raises:
-            Exception: If the nif number already exists (unique constraint violation)
+            DuplicateClientNIFError: If the NIF already exists
+            DuplicateClientEmailError: If the Email already exists
+            ClientDatabaseError: If an unexpected database error occurs
         """
-        logger.info(f"Creating client with nif number {client_data.nif}")
 
-        raise NotImplementedError("create_client method not yet implemented")
+        logger.info(f"Creating new client: {client_data.name}")
 
-    async def get_by_id(self, client_id: ObjectId) -> Client | None:
+        try:
+            # Check for duplicate NIF first (mongomock may not enforce unique index)
+            existing_client = await Client.find_one(Client.nif == client_data.nif)
+            if existing_client:
+                raise DuplicateClientNIFError(client_data.nif)
+
+            # Check for duplicate emails
+            if client_data.email:
+                existing_client_email = await Client.find_one(Client.email == client_data.email)
+                if existing_client_email:
+                    raise DuplicateClientEmailError(client_data.email)
+
+            # Create Client document from ClientCreate data
+            client = Client(**client_data.model_dump())
+
+            # Insert into database
+            await client.insert()
+
+            logger.info(f"Successfully created client with id: {client.id}")
+            return client
+
+        except DuplicateClientNIFError:
+            # Re-raise our custom exception
+            raise
+
+        except DuplicateClientEmailError:
+            # Re-raise our custom exception
+            raise
+
+        except DuplicateKeyError as e:
+            # Determine which field caused the duplicate
+            error_msg = str(e).lower()
+            logger.error(f"Duplicate key error: {error_msg}")
+
+            if "nif" in error_msg:
+                raise DuplicateClientNIFError(client_data.nif) from e
+            elif "email" in error_msg and client_data.email:
+                raise DuplicateClientEmailError(client_data.email) from e
+            else:
+                # Fallback for unexpected duplicate key errors
+                raise ClientDatabaseError("create_client", str(e)) from e
+
+        except Exception as e:
+            logger.error(f"Unexpected error creating client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("create_client", str(e)) from e
+
+    async def get_by_id(self, client_id: ObjectId | PydanticObjectId) -> Client:
         """
         Retrieve a client by its ID.
 
@@ -36,13 +91,59 @@ class ClientRepo:
             client_id: MongoDB ObjectId of the client
 
         Returns:
-            Client document if found, None otherwise
+            Client document if found
+
+        Raises:
+            ClientNotFoundError: If client is not found
+            ClientDatabaseError: If an unexpected database error occurs
         """
-        logger.info(f"Retrieving client by ID: {client_id}")
+        logger.info(f"Retrieving client with id: {client_id}")
 
-        raise NotImplementedError("get_by_id method not yet implemented")
+        try:
+            # Convert to PydanticObjectId if needed
+            if isinstance(client_id, str):
+                client_id = PydanticObjectId(client_id)
 
-    async def get_by_nif(self, nif: str) -> Client | None:
+            # Use Beanie's get method
+            client = await Client.get(client_id)
+
+            if not client:
+                raise ClientNotFoundError(str(client_id))
+
+            logger.info(f"Successfully retrieved client with id: {client_id}")
+            return client
+
+        except ClientNotFoundError:
+            raise
+
+        except Exception as e:
+            logger.error(f"Error retrieving client by ID: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_id", str(e)) from e
+
+    async def get_all_clients(self) -> list[Client]:
+        """
+        Retrieve all clients from the database.
+
+        Returns:
+            List of all Client documents
+
+        Raises:
+            ClientDatabaseError: If an unexpected database error occurs
+        """
+        logger.info("Retrieving all clients")
+
+        try:
+            # Use Beanie's find_all method
+            clients = await Client.find_all().to_list()
+
+            logger.info(f"Found {len(clients)} clients")
+            return clients
+
+        except Exception as e:
+            logger.error(f"Error retrieving all clients: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_all_clients", str(e)) from e
+
+    async def get_by_nif(self, nif: str) -> Client:
         """
         Retrieve a client by its nif number.
 
@@ -51,12 +152,64 @@ class ClientRepo:
 
         Returns:
             Client document if found, None otherwise
+
+        Raises:
+            ClientNotFoundError: If client with NIF is not found
+            ClientDatabaseError: If an unexpected database error occurs
         """
-        logger.info(f"Retrieving client by nif number: {nif}")
 
-        raise NotImplementedError("get_by_nif method not yet implemented")
+        logger.info(f"Retrieving client with nif: {nif}")
 
-    async def update(self, client_id: ObjectId, update_data: ClientUpdate) -> Client | None:
+        try:
+            # Use Beanie's find_one method with filter
+            client = await Client.find_one(Client.nif == nif)
+
+            if not client:
+                raise ClientNotFoundError(f"NIF:{nif}")
+
+            logger.info(f"Successfully retrieved client with nif: {nif}")
+
+            return client
+
+        except ClientNotFoundError:
+            raise
+
+        except Exception as e:
+            logger.error(f"Error retrieving client by NIF: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_nif", str(e)) from e
+
+    async def get_by_email(self, email: str) -> Client:
+        """
+        Retrieve a client by its email address.
+
+        Args:
+            email: Client email address
+
+        Returns:
+            Client document
+
+        Raises:
+            ClientNotFoundError: If client with email is not found
+            ClientDatabaseError: If an unexpected database error occurs
+        """
+        logger.info(f"Retrieving client with email: {email}")
+
+        try:
+            client = await Client.find_one(Client.email == email)
+
+            if not client:
+                raise ClientNotFoundError(f"Email:{email}")
+
+            logger.info(f"Successfully retrieved client with email: {email}")
+            return client
+
+        except ClientNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Error retrieving client by email: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("get_by_email", str(e)) from e
+
+    async def update(self, client_id: ObjectId | PydanticObjectId, update_data: ClientUpdate) -> Client:
         """
         Update an existing client.
 
@@ -66,12 +219,65 @@ class ClientRepo:
 
         Returns:
             Updated client document if found, None otherwise
+
+        Raises:
+            ClientNotFoundError: If client is not found
+            DuplicateClientNIFError: If updating NIF to a duplicate value
+            DuplicateClientEmailError: If updating Email to a duplicate value
+            ClientDatabaseError: If an unexpected database error occurs
         """
-        logger.info(f"Updating client: {client_id}")
+        logger.info(f"Updating client with id: {client_id}")
+        try:
+            # Get the existing client
+            client = await Client.get(client_id)
 
-        raise NotImplementedError("update method not yet implemented")
+            if not client:
+                raise ClientNotFoundError(str(client_id))
 
-    async def delete(self, client_id: ObjectId) -> bool:
+            # Get only the fields that were explicitly set (exclude unset fields)
+            update_dict = update_data.model_dump(exclude_unset=True)
+
+            # If updating NIF, check for duplicates
+            if "nif" in update_dict:
+                existing_client = await Client.find_one(Client.nif == update_dict["nif"])
+                if existing_client and existing_client.id != client_id:
+                    raise DuplicateClientNIFError(update_dict["nif"])
+
+            # If updating Email, check for duplicates
+            if "email" in update_dict and update_dict["email"]:
+                existing_client_email = await Client.find_one(Client.email == update_dict["email"])
+                if existing_client_email and existing_client_email.id != client_id:
+                    raise DuplicateClientEmailError(update_dict["email"])
+
+            # Update the client fields
+            for field, value in update_dict.items():
+                setattr(client, field, value)
+
+            # Save changes
+            try:
+                await client.save()
+                logger.info(f"Successfully updated client: {client_id}")
+                return client
+
+            except DuplicateKeyError as e:
+                error_msg = str(e).lower()
+                logger.error(f"Duplicate key error during update: {error_msg}")
+
+                if "nif" in error_msg:
+                    raise DuplicateClientNIFError(update_dict.get("nif", "unknown")) from e
+                elif "email" in error_msg:
+                    raise DuplicateClientEmailError(update_dict.get("email", "unknown")) from e
+                else:
+                    raise ClientDatabaseError("update", str(e)) from e
+
+        except (ClientNotFoundError, DuplicateClientNIFError, DuplicateClientEmailError):
+            raise
+
+        except Exception as e:
+            logger.error(f"Error updating client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("update", str(e)) from e
+
+    async def delete(self, client_id: ObjectId | PydanticObjectId) -> bool:
         """
         Delete a client from the database.
 
@@ -81,10 +287,32 @@ class ClientRepo:
         Returns:
             True if client was deleted, False if not found
 
+        Raises:
+            ClientNotFoundError: If client is not found
+            ClientDatabaseError: If an unexpected database error occurs
+
         Note:
             Consider implementing soft delete or checking for active work orders
             before allowing deletion (business rule validation)
         """
-        logger.info(f"Deleting client: {client_id}")
 
-        raise NotImplementedError("delete method not yet implemented")
+        logger.info(f"Deleting client with id: {client_id}")
+
+        try:
+            # Get the client
+            client = await Client.get(client_id)
+
+            if not client:
+                raise ClientNotFoundError(str(client_id))
+
+            # Delete the client
+            await client.delete()
+
+            logger.info(f"Successfully deleted client: {client_id}")
+            return True
+
+        except ClientNotFoundError:
+            raise
+        except Exception as e:
+            logger.error(f"Error deleting client: {str(e)}", exc_info=True)
+            raise ClientDatabaseError("delete", str(e)) from e

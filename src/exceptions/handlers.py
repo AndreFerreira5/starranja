@@ -4,6 +4,13 @@ from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
+from src.exceptions.clients import (
+    ClientDatabaseError,
+    ClientNotFoundError,
+    DuplicateClientEmailError,
+    DuplicateClientNIFError,
+    InvalidClientDataError,
+)
 from src.exceptions.work_orders import (
     ActiveWorkOrderExistsError,
     WorkOrderDatabaseError,
@@ -51,6 +58,73 @@ async def work_order_number_conflict_handler(request: Request, exc: WorkOrderNum
 
 async def work_order_database_error_handler(request: Request, exc: WorkOrderDatabaseError) -> Response:
     """Handle WorkOrderDatabaseError with 500 Internal Server Error."""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "database_error",
+            "message": "An unexpected database error occurred",
+            "operation": exc.operation,
+        },
+    )
+
+
+# ============================================================================
+# CLIENT EXCEPTION HANDLERS
+# ============================================================================
+
+
+async def client_not_found_handler(request: Request, exc: ClientNotFoundError) -> Response:
+    """Handle ClientNotFoundError with 404 response."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": "not_found",
+            "message": str(exc),
+            "identifier": exc.identifier,
+        },
+    )
+
+
+async def duplicate_client_nif_handler(request: Request, exc: DuplicateClientNIFError) -> Response:
+    """Handle DuplicateClientNIFError with 409 Conflict response."""
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "error": "duplicate_nif",
+            "message": str(exc),
+            "nif": exc.nif,
+            "field": "nif",
+        },
+    )
+
+
+async def duplicate_client_email_handler(request: Request, exc: DuplicateClientEmailError) -> Response:
+    """Handle DuplicateClientEmailError with 409 Conflict response."""
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content={
+            "error": "duplicate_email",
+            "message": str(exc),
+            "email": exc.email,
+            "field": "email",
+        },
+    )
+
+
+async def invalid_client_data_handler(request: Request, exc: InvalidClientDataError) -> Response:
+    """Handle InvalidClientDataError with 422 Unprocessable Entity response."""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "error": "validation_error",
+            "message": str(exc),
+            "field": exc.field,
+        },
+    )
+
+
+async def client_database_error_handler(request: Request, exc: ClientDatabaseError) -> Response:
+    """Handle ClientDatabaseError with 500 Internal Server Error."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={

@@ -1,8 +1,10 @@
 from datetime import UTC, datetime
 from typing import Annotated
 
-from beanie import Document, Indexed, Insert, Replace, Save, before_event
+import pymongo
+from beanie import Document, Indexed, Replace, Save, before_event
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pymongo import IndexModel
 
 
 # ---- Nested type ----
@@ -32,13 +34,19 @@ class Client(Document):
     class Settings:
         name = "clients"  # collection name
 
-    # keep updated_at fresh on save/replace
-    async def save(self, *args, **kwargs):
-        self.updated_at = datetime.now(UTC)
-        return await super().save(*args, **kwargs)
+        # Custom indexes
+        indexes = [
+            IndexModel(
+                [("email", pymongo.ASCENDING)],  # Index email field in ascending order
+                unique=True,  # Email must be unique
+                sparse=True,  # Only index non-null emails
+                name="email_unique_sparse",  # Index name
+            )
+        ]
 
-    @before_event([Insert, Save, Replace])
-    def _touch_updated_at(self):
+    @before_event([Save, Replace])
+    def _update_timestamps(self):
+        """Update the updated_at timestamp"""
         self.updated_at = datetime.now(UTC)
 
 
