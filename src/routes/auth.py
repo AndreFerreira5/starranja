@@ -1,13 +1,13 @@
 import logging
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.authentication.auth_dependency import RoleChecker
 from src.authentication.services.password import PasswordService
-from src.authentication.services.token import generate_token as token_generator_fn
 from src.authentication.services.refresh_token_service import RefreshTokenService
-
+from src.authentication.services.token import generate_token as token_generator_fn
 from src.db.clients import (
     assign_role_to_user,
     create_user,
@@ -17,7 +17,6 @@ from src.db.clients import (
 )
 from src.db.connection import get_auth_db
 from src.models.schemas import AuthResponse, LoginRequest, RegisterRequest, UserResponse
-
 
 logger = logging.getLogger(__name__)
 # Instantiate services outside if they are stateless, or inside dependency
@@ -65,7 +64,7 @@ async def login_user(request: LoginRequest, response: Response, db: AsyncSession
         try:
             # Instantiate service with dependencies
             refresh_service = RefreshTokenService(db, password_service)
-            refresh_token = await refresh_service.generate_refresh_token(user.id)
+            refresh_token = await refresh_service.generate_refresh_token(UUID(str(user.id)))
         except Exception as refresh_error:
             logger.error(f"Refresh token generation error: {refresh_error}")
             raise HTTPException(
@@ -78,14 +77,13 @@ async def login_user(request: LoginRequest, response: Response, db: AsyncSession
             httponly=True,  # Mitigates XSS (JS cannot access this)
             secure=True,  # Only sends over HTTPS (False for localhost testing if not https)
             samesite="strict",  # CSRF protection
-            max_age=7 * 24 * 60 * 60  # 7 days in seconds
+            max_age=7 * 24 * 60 * 60,  # 7 days in seconds
         )
 
         # 3. Return ONLY Access Token in Body
         return AuthResponse(
             access_token=access_token,
             token_type="Bearer",
-            refresh_token=None  # Hide from body, or remove field from schema if you want strictly cookie-only
         )
     except HTTPException:
         raise

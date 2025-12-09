@@ -1,14 +1,15 @@
 """Seed initial users and roles"""
 
+from collections.abc import Sequence
+
+import argon2
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
-import argon2
-from typing import Sequence, Union
 
 # revision identifiers, used by Alembic.
-revision: str = '4bd1e808ad40'
-down_revision: Union[str, Sequence[str], None] = '1ee74fe46987'
+revision: str = "4bd1e808ad40"
+down_revision: str | Sequence[str] | None = "1ee74fe46987"
 branch_labels = None
 depends_on = None
 
@@ -69,21 +70,21 @@ def upgrade():
             "email": "admin@starranja.com",
             "password_hash": hash_password("AdminPass123!"),
             "full_name": "System Administrator",
-            "role": "admin"
+            "role": "admin",
         },
         {
             "username": "manager_user",
             "email": "manager@starranja.com",
             "password_hash": hash_password("ManagerPass123!"),
             "full_name": "Gerente User",
-            "role": "gerente"
+            "role": "gerente",
         },
         {
             "username": "mechanic_user",
             "email": "mechanic@starranja.com",
             "password_hash": hash_password("MechanicPass123!"),
             "full_name": "Mecanico User",
-            "role": "mecanico"
+            "role": "mecanico",
         },
     ]
 
@@ -91,7 +92,7 @@ def upgrade():
         # Check if user exists
         exists = bind.execute(
             sa.text("SELECT 1 FROM users WHERE email = :email OR username = :username"),
-            {"email": user["email"], "username": user["username"]}
+            {"email": user["email"], "username": user["username"]},
         ).scalar()
 
         if not exists:
@@ -101,7 +102,7 @@ def upgrade():
                     username=user["username"],
                     email=user["email"],
                     password_hash=user["password_hash"],
-                    full_name=user["full_name"]
+                    full_name=user["full_name"],
                 )
             )
 
@@ -118,11 +119,12 @@ def upgrade():
                 ('mechanic_user', 'mecanico')
             )
             AND NOT EXISTS (
-                SELECT 1 FROM user_roles ur 
+                SELECT 1 FROM user_roles ur
                 WHERE ur.user_id = u.id AND ur.role_id = r.id
             );
         """)
     )
+
 
 def downgrade():
     op.execute(sa.text("DELETE FROM user_roles"))

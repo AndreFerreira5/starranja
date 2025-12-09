@@ -1,16 +1,15 @@
+from uuid import UUID
+
 import pytest
-from uuid import uuid4
 from fastapi import HTTPException
 from sqlalchemy import select
 
 from src.authentication.services.token import RefreshTokenService
 from src.models.auth import RefreshToken
-from uuid import UUID
 
 
 @pytest.mark.asyncio
 class TestRefreshTokenService:
-
     async def test_generate_refresh_token(self, test_session, password_service, test_user):
         """Test that a token is generated and stored correctly."""
         service = RefreshTokenService(test_session, password_service)
@@ -28,7 +27,6 @@ class TestRefreshTokenService:
         assert stored_token.is_revoked is False
         assert password_service.check_password(stored_token.token_hash, secret) is True
 
-
     async def test_validate_refresh_token_success(self, test_session, password_service, test_user):
         service = RefreshTokenService(test_session, password_service)
         token_string = await service.generate_refresh_token(test_user.id)
@@ -37,7 +35,6 @@ class TestRefreshTokenService:
 
         assert validated_token.user_id == test_user.id
         assert validated_token.is_revoked is False
-
 
     async def test_validate_revoked_token(self, test_session, password_service, test_user):
         service = RefreshTokenService(test_session, password_service)
@@ -58,7 +55,6 @@ class TestRefreshTokenService:
         with pytest.raises(HTTPException) as exc:
             await service.validate_refresh_token("invalidformat")
         assert exc.value.status_code == 401
-
 
     async def test_validate_wrong_secret(self, test_session, password_service, test_user):
         service = RefreshTokenService(test_session, password_service)

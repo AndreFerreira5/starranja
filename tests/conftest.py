@@ -9,8 +9,11 @@ import asyncpg
 import motor.motor_asyncio
 import pytest_asyncio
 from beanie import init_beanie
+from sqlalchemy import select
 
+from src.authentication.services.password import PasswordService
 from src.config import settings
+from src.models.auth import Role, User
 
 # Configure Windows event loop FIRST
 if sys.platform == "win32":
@@ -299,11 +302,6 @@ async def init_db():
             client.close()
 
 
-from src.authentication.services.password import PasswordService
-from src.models.auth import User, Role, RefreshToken, Base
-from sqlalchemy import select
-
-
 @pytest.fixture
 def password_service():
     """Provides the PasswordService instance."""
@@ -317,7 +315,6 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
     Uses 'test_session' to ensure it's in the same DB transaction.
     """
     import uuid
-    from src.models.auth import Role  # Ensure Role is imported locally if needed
 
     unique_id = uuid.uuid4().hex[:8]
 
@@ -326,7 +323,7 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
         username=f"refresh_test_{unique_id}",
         email=f"refresh_{unique_id}@example.com",
         password_hash=password_service.hash_password("SecurePass123!"),
-        full_name="Refresh Test User"
+        full_name="Refresh Test User",
     )
 
     test_session.add(new_user)

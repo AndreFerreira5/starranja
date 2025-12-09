@@ -5,17 +5,16 @@ v4.local (symmetric encryption with XChaCha20-Poly1305)
 
 import json
 import logging
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, cast
-import secrets
 from uuid import UUID
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
-from src.models.auth import RefreshToken
 
 import pyseto
+from fastapi import HTTPException, status
 from pyseto import DecryptError, VerifyError
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.authentication.exceptions import (
     InvalidTokenError,
@@ -24,6 +23,7 @@ from src.authentication.exceptions import (
     TokenValidationError,
 )
 from src.config import settings
+from src.models.auth import RefreshToken
 
 logger = logging.getLogger(__name__)
 
@@ -441,12 +441,7 @@ class RefreshTokenService:
         # 3. Create DB record
         expires_at = datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
 
-        new_token = RefreshToken(
-            user_id=user_id,
-            token_hash=token_hash,
-            expires_at=expires_at,
-            is_revoked=False
-        )
+        new_token = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at, is_revoked=False)
 
         self.db.add(new_token)
         await self.db.commit()
@@ -467,10 +462,7 @@ class RefreshTokenService:
             token_uuid = UUID(token_id_str)
 
         except (ValueError, AttributeError):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token format"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token format")
 
         # Find token by ID
         query = select(RefreshToken).where(RefreshToken.id == token_uuid)
@@ -483,7 +475,7 @@ class RefreshTokenService:
         if refresh_token_record.is_revoked:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
 
-        if refresh_token_record.expires_at < datetime.now(UTC):
+        if refresh_token_record.expires_at < datetime.now(UTC):  # type: ignore
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
 
         # Verify hash

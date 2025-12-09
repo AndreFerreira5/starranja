@@ -1,13 +1,13 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.auth import RefreshToken
 from src.authentication.services.password import PasswordService
+from src.models.auth import RefreshToken
 
 
 class RefreshTokenService:
@@ -31,14 +31,9 @@ class RefreshTokenService:
         token_hash = self.password_service.hash_password(secret_token)
 
         # 3. Create DB record
-        expires_at = datetime.now(timezone.utc) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+        expires_at = datetime.now(UTC) + timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
 
-        new_token = RefreshToken(
-            user_id=user_id,
-            token_hash=token_hash,
-            expires_at=expires_at,
-            is_revoked=False
-        )
+        new_token = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at, is_revoked=False)
 
         self.db.add(new_token)
         await self.db.commit()
@@ -59,10 +54,7 @@ class RefreshTokenService:
             token_uuid = UUID(token_id_str)
 
         except (ValueError, AttributeError):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token format"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token format")
 
         # Find token by ID
         query = select(RefreshToken).where(RefreshToken.id == token_uuid)
@@ -75,7 +67,7 @@ class RefreshTokenService:
         if refresh_token_record.is_revoked:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked")
 
-        if refresh_token_record.expires_at < datetime.now(timezone.utc):
+        if refresh_token_record.expires_at < datetime.now(UTC):  # type: ignore
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
 
         # Verify hash
