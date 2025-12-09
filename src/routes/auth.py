@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.authentication.auth_dependency import RoleChecker
@@ -181,3 +181,63 @@ async def register_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred. Please try again later.",
         )
+
+
+@router.post("/refresh", response_model=AuthResponse)
+async def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    db: AsyncSession = Depends(get_auth_db),
+):
+    """
+    Refresh Access Token Endpoint.
+
+    1. Validates the refresh token (from HttpOnly cookie).
+    2. Revokes the old refresh token (Token Rotation).
+    3. Issues a new Access Token and a new Refresh Token.
+    """
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
+
+    # Instantiate services
+    # We can pass None for password_service here if RefreshTokenService only needs DB for validation
+    # If your RefreshTokenService constructor strictly requires it, create a dummy or real instance
+    refresh_service = RefreshTokenService(db, password_service)
+
+    try:
+        # 1. Validate the existing refresh token
+        # This should return the RefreshToken model instance if valid
+        token_record = await refresh_service.validate_refresh_token(refresh_token)
+
+        user_id = token_record.user_id
+
+        # 2. Revoke the old token (Token Rotation)
+        await refresh_service.revoke_refresh_token(UUID(str(token_record.id)))
+
+        # 3. Get user roles for the new access token
+        roles = await get_roles_by_user_id(db, str(user_id))
+        role_names = [role.name for role in roles]
+
+        # 4. Generate NEW Access Token
+        new_access_token = token_generator_fn(user_id=str(user_id), roles=role_names)
+
+        # 5. Generate NEW Refresh Token
+        new_refresh_token = await refresh_service.generate_refresh_token(UUID(str(user_id)))
+
+        # 6. Set the NEW Refresh Token in HttpOnly Cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=True,  # Set False if testing on localhost without HTTPS
+            samesite="strict",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+        )
+
+        return AuthResponse(access_token=new_access_token, token_type="Bearer")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Refresh token error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
