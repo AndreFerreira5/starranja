@@ -7,32 +7,16 @@ from secrets import token_hex
 
 import asyncpg
 import motor.motor_asyncio
+import pytest
 import pytest_asyncio
 from beanie import init_beanie
-
-from src.config import settings
-
-# Configure Windows event loop FIRST
-if sys.platform == "win32":
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-# Set PASETO key BEFORE any other imports
-if "PASETO_SECRET_KEY" not in os.environ:
-    settings.auth.PASETO_SECRET_KEY = token_hex(32)
-    os.environ["PASETO_SECRET_KEY"] = settings.auth.PASETO_SECRET_KEY
-
-import pytest
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
-# Load test environment variables
-if not load_dotenv(".env.test", override=False):
-    load_dotenv(".env", override=False)
-
-# Import after environment is configured
+from src.config import settings
 from src.db.connection import get_auth_db
 from src.main import app
 from src.models.appointments import Appointment
@@ -42,8 +26,26 @@ from src.models.invoices import Invoice
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
 
-if "PASETO_SECRET_KEY" not in os.environ:
+# Configure Windows event loop FIRST
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+# Load test environment variables FIRST (.env.test preferred)
+if not load_dotenv(".env.test", override=False):
+    load_dotenv(".env", override=False)
+
+# Set PASETO key BEFORE tests that might use it
+env_auth_paseto = os.getenv("AUTH__PASETO_SECRET_KEY")
+env_paseto = os.getenv("PASETO_SECRET_KEY")
+
+if env_auth_paseto:
+    settings.auth.PASETO_SECRET_KEY = env_auth_paseto.strip()
+    os.environ["PASETO_SECRET_KEY"] = settings.auth.PASETO_SECRET_KEY
+elif env_paseto:
+    settings.auth.PASETO_SECRET_KEY = env_paseto.strip()
+else:
     settings.auth.PASETO_SECRET_KEY = token_hex(32)
+    os.environ["PASETO_SECRET_KEY"] = settings.auth.PASETO_SECRET_KEY
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -209,34 +211,43 @@ def multiple_users_data():
 
 
 @pytest_asyncio.fixture
-async def registered_user(client: AsyncClient, sample_user_data: dict):
+async def registered_user(
+    client: AsyncClient,
+    sample_user_data: dict,
+    admin_token: dict,
+) -> dict:
     """
-    Fixture that creates a registered user.
-    Posts to /auth/register which is public in test environment.
+    Create a regular user by calling the protected /auth/register endpoint
+    with valid admin credentials. Returns both user payload and admin info.
     """
-    # Register user at /auth/register (matches main.py prefix)
-    response = await client.post("/auth/register", json=sample_user_data)
+    headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
-    # Better error message if registration fails
+    response = await client.post(
+        "/auth/register",
+        json=sample_user_data,
+        headers=headers,
+    )
     assert response.status_code == 201, f"Registration failed with {response.status_code}: {response.text}"
 
+    # Preserve both created user and admin info for downstream tests
     return {
-        "user_data": sample_user_data,  # Contains original password
-        "response": response.json(),
+        "user_data": sample_user_data,
+        "admin": admin_token["user_data"],
     }
 
 
 @pytest_asyncio.fixture
-async def admin_token(client: AsyncClient):
+async def admin_token(client: AsyncClient) -> dict:
     """
-    Fixture that creates an admin user and returns authentication token.
-    Useful for testing protected endpoints that require admin role.
+    Ensure there is an admin user and return a valid admin access token.
+
+    This uses a dedicated bootstrap endpoint enabled only in non-production
+    environments, so tests do not depend on a pre-existing admin account.
     """
     import random
     import string
 
     random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
-
     admin_data = {
         "username": f"admin_user_{random_suffix}",
         "password": "AdminPass123!",
@@ -245,18 +256,27 @@ async def admin_token(client: AsyncClient):
         "role": "admin",
     }
 
-    # Register admin user
-    reg_response = await client.post("/auth/register", json=admin_data)
-    assert reg_response.status_code == 201, f"Admin registration failed: {reg_response.text}"
+    # 1) Create or upsert admin user via bootstrap route
+    resp_boot = await client.post("/auth/bootstrap-admin", json=admin_data)
+    assert resp_boot.status_code in (200, 201), f"Admin bootstrap failed: {resp_boot.status_code} {resp_boot.text}"
 
-    # Login to get token
-    login_response = await client.post(
-        "/auth/login", json={"username": admin_data["username"], "password": admin_data["password"]}
+    # 2) Login via the real /auth/login endpoint to obtain a token
+    resp_login = await client.post(
+        "/auth/login",
+        json={
+            "username": admin_data["username"],
+            "password": admin_data["password"],
+        },
     )
-    assert login_response.status_code == 200, f"Admin login failed: {login_response.text}"
+    assert resp_login.status_code == 200, f"Admin login failed: {resp_login.status_code} {resp_login.text}"
 
-    token = login_response.json()["access_token"]
-    return {"token": token, "user_data": admin_data}
+    token_data = resp_login.json()
+    assert "access_token" in token_data
+
+    return {
+        "token": token_data["access_token"],
+        "user_data": admin_data,
+    }
 
 
 @pytest_asyncio.fixture(scope="function")
