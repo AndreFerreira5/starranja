@@ -297,3 +297,49 @@ async def init_db():
             await client.drop_database(db_name)
         finally:
             client.close()
+
+
+from src.authentication.services.password import PasswordService
+from src.models.auth import User, Role, RefreshToken, Base
+from sqlalchemy import select
+
+
+@pytest.fixture
+def password_service():
+    """Provides the PasswordService instance."""
+    return PasswordService()
+
+
+@pytest_asyncio.fixture
+async def test_user(test_session: AsyncSession, password_service: PasswordService):
+    """
+    Creates a dedicated user for refresh token testing.
+    Uses 'test_session' to ensure it's in the same DB transaction.
+    """
+    import uuid
+    from src.models.auth import Role  # Ensure Role is imported locally if needed
+
+    unique_id = uuid.uuid4().hex[:8]
+
+    # Create the user
+    new_user = User(
+        username=f"refresh_test_{unique_id}",
+        email=f"refresh_{unique_id}@example.com",
+        password_hash=password_service.hash_password("SecurePass123!"),
+        full_name="Refresh Test User"
+    )
+
+    test_session.add(new_user)
+    # Don't flush yet, wait until we add roles so we can do it all at once
+
+    # Fetch the role to assign
+    result = await test_session.execute(select(Role).where(Role.name == "mecanico"))
+    role = result.scalar_one_or_none()
+
+    if role:
+        new_user.roles.append(role)
+
+    await test_session.commit()
+    await test_session.refresh(new_user)
+
+    return new_user
