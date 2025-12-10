@@ -15,6 +15,7 @@ from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
 
+
 class WorkOrderRepo:
     def __init__(self, db):
         self.db = db

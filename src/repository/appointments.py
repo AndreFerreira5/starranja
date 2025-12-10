@@ -6,7 +6,6 @@ from fastapi import HTTPException
 from src.models.appointments import Appointment, AppointmentCreate, AppointmentUpdate
 from src.models.client import Client
 
-
 logger = logging.getLogger(__name__)
 
 

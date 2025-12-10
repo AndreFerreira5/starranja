@@ -1,27 +1,27 @@
 import logging
-from datetime import datetime, UTC # Ensure UTC is imported
+from datetime import UTC, datetime  # Ensure UTC is imported
 from decimal import Decimal
 
-from bson import ObjectId, Decimal128
+from bson import Decimal128, ObjectId
 from fastapi import HTTPException
 from pymongo import ReturnDocument
 
-from src.models.invoices import (
-    Invoice, 
-    InvoiceCreate, 
-    InvoiceUpdate, 
-    InvoiceStatus,
-    InvoiceClientDetails,
-    InvoiceVehicleDetails,
-    InvoiceAddress
-)
-from src.models.work_orders import WorkOrder
 from src.models.client import Client
+from src.models.invoices import (
+    Invoice,
+    InvoiceAddress,
+    InvoiceClientDetails,
+    InvoiceCreate,
+    InvoiceStatus,
+    InvoiceUpdate,
+    InvoiceVehicleDetails,
+)
 from src.models.vehicle import Vehicle
-
+from src.models.work_orders import WorkOrder
 from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
+
 
 class InvoiceRepo:
     def __init__(self, db):
@@ -69,34 +69,26 @@ class InvoiceRepo:
             # 3. Create Snapshots for Client and Vehicle
             # Note: Adjust address fields based on your actual Client model structure
             client_address = getattr(client, "address", None)
-            
+
             # Fallback if address is missing but required by InvoiceAddress model
             if not client_address:
                 addr_snapshot = InvoiceAddress(street="N/A", city="N/A", zipCode="0000-000")
             else:
                 # Assuming client.address matches InvoiceAddress structure or mapping is needed
                 addr_snapshot = InvoiceAddress(
-                    street=client_address.street, 
-                    city=client_address.city, 
-                    zipCode=client_address.zip_code
+                    street=client_address.street, city=client_address.city, zipCode=client_address.zip_code
                 )
 
-            client_snapshot = InvoiceClientDetails(
-                name=client.name,
-                nif=client.nif,
-                address=addr_snapshot
-            )
+            client_snapshot = InvoiceClientDetails(name=client.name, nif=client.nif, address=addr_snapshot)
 
             vehicle_snapshot = InvoiceVehicleDetails(
-                licensePlate=vehicle.license_plate,
-                brand=vehicle.brand,
-                model=vehicle.model
+                licensePlate=vehicle.license_plate, brand=vehicle.brand, model=vehicle.model
             )
 
             # 4. Process Items and Calculate Totals
             # Assuming work_order has an 'items' list. If not, initialize empty.
             wo_items = getattr(work_order, "items", [])
-            
+
             invoice_items = []
             total_without_iva = Decimal("0.00")
             total_iva = Decimal("0.00")
@@ -109,12 +101,12 @@ class InvoiceRepo:
 
                 line_total = qty * price
                 line_iva = line_total * iva_rate
-                
+
                 total_without_iva += line_total
                 total_iva += line_iva
-                
+
                 # Append to invoice items (ensure structure matches InvoiceItem)
-                invoice_items.append(item) 
+                invoice_items.append(item)
 
             total_with_iva = total_without_iva + total_iva
 
@@ -126,21 +118,18 @@ class InvoiceRepo:
                 invoice_number=invoice_number,
                 invoice_date=datetime.now(UTC),
                 status=InvoiceStatus.EMITTED,
-                
                 # References
                 work_order_id=work_order.id,
                 client_id=client.id,
-                emitted_by_id=work_order.created_by_id, # Or user from context
-                
+                emitted_by_id=work_order.created_by_id,  # Or user from context
                 # Snapshots
                 client_details=client_snapshot,
                 vehicle_details=vehicle_snapshot,
                 items=invoice_items,
-                
                 # Calculated Totals (Convert back to Decimal128)
                 total_without_iva=Decimal128(total_without_iva),
                 total_iva=Decimal128(total_iva),
-                total_with_iva=Decimal128(total_with_iva)
+                total_with_iva=Decimal128(total_with_iva),
             )
 
             await invoice.insert()
@@ -150,7 +139,6 @@ class InvoiceRepo:
         except Exception as e:
             logger.error(f"Error creating invoice: {e}")
             raise
-
 
     @handle_repo_errors("get_invoice_by_id")
     async def get_invoice_by_id(self, invoice_id: ObjectId) -> Invoice | None:
@@ -174,11 +162,11 @@ class InvoiceRepo:
             else:
                 logger.info("No invoice found with the given ID")
             return invoice
-        
-        except Exception as e: 
+
+        except Exception as e:
             logger.error(f"Error retrieving invoice: {e}")
             raise
-    
+
     @handle_repo_errors("get_invoices_by_client_id")
     async def get_invoices_by_client_id(self, client_id: ObjectId) -> list[Invoice]:
         """
@@ -197,13 +185,13 @@ class InvoiceRepo:
             logger.info(f"Found {len(invoices)} invoices for client ID {client_id}")
 
             return invoices
-        
+
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
             raise
-    
+
     @handle_repo_errors("get_invoices_by_work_order_id")
-    async def get_invoices_by_work_order_id(self, work_order_id: ObjectId) -> list[Invoice]: 
+    async def get_invoices_by_work_order_id(self, work_order_id: ObjectId) -> list[Invoice]:
         """
         Retrieve all invoices for a given work order ID.
 
@@ -220,11 +208,11 @@ class InvoiceRepo:
             logger.info(f"Found {len(invoices)} invoices for work order ID {work_order_id}")
 
             return invoices
-        
+
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
             raise
-    
+
     @handle_repo_errors("update_invoice")
     async def update_invoice(self, invoice_id: ObjectId, invoice_data: InvoiceUpdate) -> Invoice | None:
         """
@@ -255,7 +243,7 @@ class InvoiceRepo:
             logger.info(f"Invoice updated: {invoice}")
 
             return invoice
-        
+
         except Exception as e:
             logger.error(f"Error updating invoice: {e}")
             raise
@@ -285,7 +273,7 @@ class InvoiceRepo:
             logger.info("Invoice deleted successfully")
 
             return True
-        
+
         except Exception as e:
             logger.error(f"Error deleting invoice: {e}")
             raise

@@ -2,31 +2,32 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from fastapi import HTTPException
 from bson import ObjectId
 from bson.decimal128 import Decimal128  # Required for financial fields
+from fastapi import HTTPException
 
-from src.models.invoices import (
-    Invoice, 
-    InvoiceCreate, 
-    InvoiceStatus, 
-    InvoiceUpdate,
-    InvoiceClientDetails,
-    InvoiceVehicleDetails,
-    InvoiceAddress
-)
 from src.models.client import Client
-from src.models.work_orders import WorkOrder, WorkOrderStatus
+from src.models.invoices import (
+    Invoice,
+    InvoiceAddress,
+    InvoiceClientDetails,
+    InvoiceCreate,
+    InvoiceStatus,
+    InvoiceUpdate,
+    InvoiceVehicleDetails,
+)
 from src.models.vehicle import Vehicle
-
+from src.models.work_orders import WorkOrder, WorkOrderStatus
 from src.repository.invoices import InvoiceRepo
 
 pytestmark = pytest.mark.asyncio
+
 
 @pytest.fixture(scope="function")
 async def invoice_repo(init_db):
     """Fixture to provide a clean InvoiceRepo instance for each test."""
     return InvoiceRepo(init_db)
+
 
 @pytest.fixture(scope="function")
 async def sample_client(init_db):
@@ -36,11 +37,12 @@ async def sample_client(init_db):
         nif="123456789",
         phone="912345678",
         email="test@example.com",
-        is_active=True
+        is_active=True,
         # Add address here if Client model has it, otherwise we mock it in the invoice
     )
     await client.save()
     return client
+
 
 @pytest.fixture(scope="function")
 async def sample_vehicle(init_db, sample_client):
@@ -52,10 +54,11 @@ async def sample_vehicle(init_db, sample_client):
         model="Corolla",
         kilometers=1000,
         vin="1234567890ABCDEFG",
-        year=2020
+        year=2020,
     )
     await vehicle.save()
     return vehicle
+
 
 @pytest.fixture(scope="function")
 async def sample_work_order(init_db, sample_client, sample_vehicle):
@@ -69,11 +72,12 @@ async def sample_work_order(init_db, sample_client, sample_vehicle):
         is_active=True,
         entry_date=datetime.now(UTC),
         description="Fix brakes",
-        # Assuming work order has items, we mock them here logic-wise, 
+        # Assuming work order has items, we mock them here logic-wise,
         # but for the Invoice fixture we will manually inject items.
     )
     await work_order.save()
     return work_order
+
 
 @pytest.fixture(scope="function")
 async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehicle):
@@ -81,18 +85,16 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
     Fixture to create a COMPLETE sample invoice in the test DB.
     Includes snapshots of client, vehicle, and items.
     """
-    
+
     # 1. Prepare Snapshot Data
     client_snapshot = InvoiceClientDetails(
         name=sample_client.name,
         nif=sample_client.nif,
-        address=InvoiceAddress(street="Test St", city="Lisbon", zipCode="1000-001")
+        address=InvoiceAddress(street="Test St", city="Lisbon", zipCode="1000-001"),
     )
 
     vehicle_snapshot = InvoiceVehicleDetails(
-        licensePlate=sample_vehicle.license_plate,
-        brand=sample_vehicle.brand,
-        model=sample_vehicle.model
+        licensePlate=sample_vehicle.license_plate, brand=sample_vehicle.brand, model=sample_vehicle.model
     )
 
     # Mock Items (matches WorkOrderItem schema)
@@ -104,7 +106,7 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
             "quantity": Decimal128("2.0"),
             "unitPriceWithoutIVA": Decimal128("50.00"),
             "ivaRate": Decimal128("0.23"),
-            "totalPriceWithIVA": Decimal128("123.00")
+            "totalPriceWithIVA": Decimal128("123.00"),
         }
     ]
 
@@ -113,33 +115,32 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
         invoice_number="FT 2025/1",
         invoice_date=datetime.now(UTC),
         status=InvoiceStatus.EMITTED,
-        
         # References
         work_order_id=sample_work_order.id,
         client_id=sample_client.id,
-        emitted_by_id=uuid4(), # ID of the user generating the invoice
-        
+        emitted_by_id=uuid4(),  # ID of the user generating the invoice
         # Snapshots
         client_details=client_snapshot,
         vehicle_details=vehicle_snapshot,
         items=items_snapshot,
-        
         # Totals
         total_without_iva=Decimal128("100.00"),
         total_iva=Decimal128("23.00"),
-        total_with_iva=Decimal128("123.00")
+        total_with_iva=Decimal128("123.00"),
     )
-    
+
     await invoice.save()
     return invoice
 
+
 # --- Tests ---
+
 
 async def test_create_invoice_success(invoice_repo, sample_client, sample_work_order):
     """
-    Test creating an invoice. 
-    Note: The InvoiceCreate model only accepts work_order_id. 
-    The Repository logic (not shown in provided files) is responsible for fetching 
+    Test creating an invoice.
+    Note: The InvoiceCreate model only accepts work_order_id.
+    The Repository logic (not shown in provided files) is responsible for fetching
     Client/Vehicle/Items and calculating totals to create the full Invoice document.
     """
     create_data = InvoiceCreate(
@@ -149,7 +150,7 @@ async def test_create_invoice_success(invoice_repo, sample_client, sample_work_o
     # Since the repository implementation wasn't provided in the prompt context,
     # this call relies on your Repo correctly implementing the snapshot logic.
     # If the repo isn't implemented yet, this will fail with NotImplementedError (as expected).
-    new_invoice = await invoice_repo.create_invoice(create_data) 
+    new_invoice = await invoice_repo.create_invoice(create_data)
 
     assert new_invoice is not None
     assert new_invoice.id is not None
@@ -159,17 +160,19 @@ async def test_create_invoice_success(invoice_repo, sample_client, sample_work_o
     assert new_invoice.client_details.nif == sample_client.nif
     assert new_invoice.status == InvoiceStatus.EMITTED
 
+
 async def test_create_invoice_failed(invoice_repo):
     """Test creating an invoice with invalid Work Order ID fails."""
     create_data = InvoiceCreate(
-        work_order_id=ObjectId(), # Random ID
+        work_order_id=ObjectId(),  # Random ID
     )
-    
+
     with pytest.raises(HTTPException) as exc_info:
         await invoice_repo.create_invoice(create_data)
-    
+
     # Assuming repository raises 404 if Work Order not found
     assert exc_info.value.status_code == 404
+
 
 async def test_get_invoice_by_id_success(invoice_repo, sample_invoice):
     """Test retrieving an invoice by its ObjectId."""
@@ -180,6 +183,7 @@ async def test_get_invoice_by_id_success(invoice_repo, sample_invoice):
     assert found_invoice.invoice_number == "FT 2025/1"
     assert found_invoice.total_with_iva == Decimal128("123.00")
 
+
 async def test_get_invoice_by_id_not_found(invoice_repo):
     """Test retrieving a non-existent invoice by its ObjectId."""
     non_existent_id = ObjectId()
@@ -187,7 +191,8 @@ async def test_get_invoice_by_id_not_found(invoice_repo):
 
     assert found_invoice is None
 
-async def test_get_invoices_by_client_id_success(invoice_repo, sample_client, sample_invoice):  
+
+async def test_get_invoices_by_client_id_success(invoice_repo, sample_client, sample_invoice):
     """Test retrieving invoices by client ID."""
     found_invoices = await invoice_repo.get_invoices_by_client_id(sample_client.id)
 
@@ -197,12 +202,14 @@ async def test_get_invoices_by_client_id_success(invoice_repo, sample_client, sa
     # Validate embedded data access
     assert found_invoices[0].client_details.nif == sample_client.nif
 
+
 async def test_get_invoices_by_client_id_not_found(invoice_repo):
     """Test retrieving invoices for a client ID with no invoices."""
     non_existent_client_id = ObjectId()
     found_invoices = await invoice_repo.get_invoices_by_client_id(non_existent_client_id)
 
-    assert not found_invoices # Should be empty list or None depending on implementation
+    assert not found_invoices  # Should be empty list or None depending on implementation
+
 
 async def test_get_invoices_by_work_order_id_success(invoice_repo, sample_work_order, sample_invoice):
     """Test retrieving invoices by work order ID."""
@@ -212,6 +219,7 @@ async def test_get_invoices_by_work_order_id_success(invoice_repo, sample_work_o
     assert len(found_invoices) >= 1
     assert any(invoice.id == sample_invoice.id for invoice in found_invoices)
 
+
 async def test_get_invoices_by_work_order_id_not_found(invoice_repo):
     """Test retrieving invoices for a work order ID with no invoices."""
     non_existent_work_order_id = ObjectId()
@@ -219,32 +227,31 @@ async def test_get_invoices_by_work_order_id_not_found(invoice_repo):
 
     assert not found_invoices
 
+
 async def test_update_invoice_success(invoice_repo, sample_invoice):
     """Test updating an existing invoice status."""
-    update_data = InvoiceUpdate(
-        status=InvoiceStatus.PAID
-    )
+    update_data = InvoiceUpdate(status=InvoiceStatus.PAID)
 
     updated_invoice = await invoice_repo.update_invoice(sample_invoice.id, update_data)
 
     assert updated_invoice is not None
     assert updated_invoice.id == sample_invoice.id
     assert updated_invoice.status == InvoiceStatus.PAID
-    
+
     # Verify persistence
     found = await Invoice.get(sample_invoice.id)
     assert found is not None
     assert found.status == InvoiceStatus.PAID
 
+
 async def test_update_invoice_not_found(invoice_repo):
     """Test updating a non-existent invoice."""
     non_existent_id = ObjectId()
-    update_data = InvoiceUpdate(
-        status=InvoiceStatus.PAID
-    )
+    update_data = InvoiceUpdate(status=InvoiceStatus.PAID)
 
     updated_invoice = await invoice_repo.update_invoice(non_existent_id, update_data)
     assert updated_invoice is None
+
 
 async def test_delete_invoice_success(invoice_repo, sample_invoice):
     """Test deleting an existing invoice."""
@@ -255,6 +262,7 @@ async def test_delete_invoice_success(invoice_repo, sample_invoice):
     # Verify it's actually deleted
     found_invoice = await Invoice.get(sample_invoice.id)
     assert found_invoice is None
+
 
 async def test_delete_invoice_not_found(invoice_repo):
     """Test deleting a non-existent invoice."""
