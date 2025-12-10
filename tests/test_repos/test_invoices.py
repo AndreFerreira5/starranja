@@ -143,7 +143,7 @@ async def test_create_invoice_success(invoice_repo, sample_client, sample_work_o
     Client/Vehicle/Items and calculating totals to create the full Invoice document.
     """
     create_data = InvoiceCreate(
-        work_order_id=sample_work_order.id
+        work_order_id=sample_work_order.id,
     )
 
     # Since the repository implementation wasn't provided in the prompt context,
