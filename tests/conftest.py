@@ -1,5 +1,7 @@
 import asyncio
 import os
+import random
+import string
 import sys
 import uuid
 from collections.abc import AsyncGenerator
@@ -239,14 +241,10 @@ async def registered_user(
 @pytest_asyncio.fixture
 async def admin_token(client: AsyncClient) -> dict:
     """
-    Ensure there is an admin user and return a valid admin access token.
-
-    This uses a dedicated bootstrap endpoint enabled only in non-production
-    environments, so tests do not depend on a pre-existing admin account.
+    - In non-production (e.g. ENVIRONMENT=test), uses /auth/bootstrap-admin.
+    - If bootstrap is forbidden (ENVIRONMENT=production), RBAC auth tests
+      are skipped instead of failing the whole suite.
     """
-    import random
-    import string
-
     random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
     admin_data = {
         "username": f"admin_user_{random_suffix}",
@@ -256,8 +254,15 @@ async def admin_token(client: AsyncClient) -> dict:
         "role": "admin",
     }
 
-    # 1) Create or upsert admin user via bootstrap route
+    # 1) Try to bootstrap admin
     resp_boot = await client.post("/auth/bootstrap-admin", json=admin_data)
+
+    if resp_boot.status_code == 403:
+        # Environment explicitly forbids bootstrap (e.g. production CI).
+        pytest.skip(
+            "Admin bootstrap not allowed in this environment (ENVIRONMENT=production). Skipping RBAC auth tests."
+        )
+
     assert resp_boot.status_code in (200, 201), f"Admin bootstrap failed: {resp_boot.status_code} {resp_boot.text}"
 
     # 2) Login via the real /auth/login endpoint to obtain a token
