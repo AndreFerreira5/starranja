@@ -229,9 +229,9 @@ Manages orders to external providers (RF07). Handles both vehicle-specific parts
 
 ### Indexes
 
-| Field(s) | Type | Purpose |
-| :--- | :--- | :--- |
-| `{ workOrderId: 1 }` | Simple | Fast lookup of all orders related to a specific repair job. |
+| Field(s) | Type   | Purpose |
+| :--- |:-------| :--- |
+| `{ workOrderId: 1 }` | Sparse | Fast lookup of all orders related to a specific job. **Ignores internal orders where this field is null.** |
 | `{ status: 1 }` | Simple | Dashboard query: "Show all parts waiting to be received". |
 | `{ createdAt: -1 }` | Simple | Sort orders by newest first. |
 | `{ supplierName: 1 }` | Simple | Reporting: History by vendor. |

@@ -468,7 +468,7 @@ db.runCommand({
 });
 
 // Indexes
-db.supplierOrders.createIndex({workOrderId: 1}); // Sparse index automatically handled by Mongo if null
+db.supplierOrders.createIndex({ workOrderId: 1 }, { sparse: true }); // Sparse index automatically handled by Mongo if null
 db.supplierOrders.createIndex({status: 1});
 db.supplierOrders.createIndex({createdAt: -1}); // Newest orders first
 db.supplierOrders.createIndex({supplierName: 1});
