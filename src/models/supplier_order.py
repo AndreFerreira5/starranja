@@ -1,9 +1,8 @@
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Annotated
 from uuid import UUID
 
-from beanie import Document, Indexed
+from beanie import Document
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
@@ -28,18 +27,18 @@ class SupplierOrder(Document):
     """
 
     # --- Core Info ---
-    supplier_name: Annotated[str, Indexed()] = Field(..., alias="supplierName")
+    supplier_name: str = Field(..., alias="supplierName")
     description: str = Field(..., description="Summary of the order (e.g. 'Brake Parts for WO-2025-001')")
 
     # --- Links ---
     # Optional: Only present if this order is strictly for a specific repair job
-    work_order_id: Annotated[ObjectId, Indexed()] | None = Field(None, alias="workOrderId")
+    work_order_id: ObjectId | None = Field(None, alias="workOrderId")
 
     # User (PostgreSQL) who placed the order
     created_by_id: UUID = Field(..., alias="createdById")
 
     # --- Status ---
-    status: Annotated[SupplierOrderStatus, Indexed()] = Field(default=SupplierOrderStatus.PENDING)
+    status: SupplierOrderStatus = Field(default=SupplierOrderStatus.PENDING)
 
     # --- Date ---
     order_date: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="orderDate")
@@ -58,7 +57,8 @@ class SupplierOrder(Document):
 
         indexes = [
             # Fast lookup for orders linked to a specific job
-            IndexModel([("workOrderId", 1)]),
+            # Sparse ensures we don't index documents where workOrderId is null.
+            IndexModel([("workOrderId", 1)], sparse=True),
             # Dashboard filtering (e.g., "Show all Pending orders")
             IndexModel([("status", 1)]),
             # History sorting (Newest first)
@@ -103,9 +103,7 @@ class SupplierOrderOut(BaseModel):
     work_order_id: str | None = Field(None, alias="workOrderId")
     status: SupplierOrderStatus
     created_by_id: UUID = Field(..., alias="createdById")
-
     order_date: datetime = Field(..., alias="orderDate")
-
     created_at: datetime = Field(..., alias="createdAt")
     updated_at: datetime = Field(..., alias="updatedAt")
 
