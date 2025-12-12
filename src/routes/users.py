@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from src.authentication.decorators import token_required
 
-router = APIRouter(prefix="/users", tags=["Users"])
+router = APIRouter(tags=["Users"])
 
 
 @router.get("/me")

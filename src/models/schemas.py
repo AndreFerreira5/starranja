@@ -40,3 +40,11 @@ class UserResponse(BaseModel):
     email: EmailStr | None = None
     full_name: str
     created_at: datetime
+
+
+class UserUpdate(BaseModel):
+    full_name: str | None = None
+    email: EmailStr | None = None
+    password: str | None = Field(None, min_length=6)
+    # Role updates are usually separated or restricted, so we make it optional here
+    role: str | None = None

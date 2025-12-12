@@ -246,10 +246,11 @@ async def registered_user(
     )
     assert response.status_code == 201, f"Registration failed with {response.status_code}: {response.text}"
 
-    # Preserve both created user and admin info for downstream tests
+    # Preserve both created user, admin info, and the response body
     return {
         "user_data": sample_user_data,
         "admin": admin_token["user_data"],
+        "response": response.json(),
     }
 
 
@@ -364,7 +365,6 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
     )
 
     test_session.add(new_user)
-    # Don't flush yet, wait until we add roles so we can do it all at once
 
     # Fetch the role to assign
     result = await test_session.execute(select(Role).where(Role.name == "mecanico"))
