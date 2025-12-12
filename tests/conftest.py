@@ -27,7 +27,6 @@ if "PASETO_SECRET_KEY" not in os.environ:
     settings.auth.PASETO_SECRET_KEY = token_hex(32)
     os.environ["PASETO_SECRET_KEY"] = settings.auth.PASETO_SECRET_KEY
 
-import pytest
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import text

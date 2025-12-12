@@ -6,9 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.authentication.decorators import token_required
 from src.authentication.services.password import PasswordService
-from src.config import settings
 from src.authentication.services.refresh_token_service import RefreshTokenService
 from src.authentication.services.token import generate_token as token_generator_fn
+from src.config import settings
 from src.db.clients import (
     assign_role_to_user,
     create_user,
@@ -98,8 +98,7 @@ async def login_user(
         except Exception as refresh_error:
             logger.error(f"Refresh token generation error: {refresh_error}")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error generating refresh token"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error generating refresh token"
             )
 
         response.set_cookie(
