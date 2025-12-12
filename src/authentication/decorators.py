@@ -4,12 +4,6 @@ Role-Based Access Control (RBAC) Decorators for FastAPI Route Protection
 Decorators:
 - @token_required: Base authentication decorator
 - @token_required(roles=[...]): Authentication + role-based authorization
-
-REFACTORED VERSION - Fixes:
-1. Case-insensitive role comparison
-2. Type validation for required_roles parameter
-3. Explicit validation for roles claim in token payload
-4. Improved error messages and logging
 """
 
 import logging
@@ -221,39 +215,6 @@ def token_required(roles: list[str] | str | None = None) -> Callable:
     This function returns a FastAPI dependency that can be used with Depends()
     to protect routes with authentication and optional role-based authorization.
 
-    Role matching is **case-insensitive** for flexibility.
-
-    Usage Examples:
-
-    ```python
-    # Authentication only (any authenticated user)
-    @router.get("/profile")
-    async def get_profile(user: dict = Depends(token_required())):
-        return {"user_id": user["user_id"]}
-
-    # Single role requirement
-    @router.post("/admin/users")
-    async def create_user(
-        user: dict = Depends(token_required(roles="admin"))
-    ):
-        return {"message": "User created"}
-
-    # Multiple role options (user must have at least one)
-    @router.post("/admin/users")
-    async def create_user(
-        user: dict = Depends(token_required(roles=["admin", "gerente"]))
-    ):
-        return {"message": "User created"}
-
-    # Complex role hierarchy
-    @router.delete("/resources/{id}")
-    async def delete_resource(
-        id: str,
-        user: dict = Depends(token_required(roles=["admin", "manager", "owner"]))
-    ):
-        return {"message": f"Resource {id} deleted"}
-    ```
-
     Args:
         roles: Optional role(s) required for authorization.
             Can be a string (single role) or list of strings (multiple roles).
@@ -262,13 +223,6 @@ def token_required(roles: list[str] | str | None = None) -> Callable:
 
     Returns:
         Callable: A dependency function compatible with FastAPI's Depends()
-
-    Security Considerations:
-    - Implements defense in depth (authentication + authorization)
-    - Follows principle of least privilege
-    - Provides clear error messages for debugging while avoiding info leakage
-    - Logs security events for audit trails
-    - Case-insensitive role matching prevents misconfiguration issues
     """
     return AuthenticationRequired(required_roles=roles)
 
@@ -276,9 +230,6 @@ def token_required(roles: list[str] | str | None = None) -> Callable:
 def get_current_user(request: Request) -> dict[str, Any]:
     """
     Extract the current authenticated user from the request state.
-
-    This function should be used in route handlers that have already
-    applied the @token_required decorator via Depends().
 
     Args:
         request: FastAPI request object
@@ -288,19 +239,6 @@ def get_current_user(request: Request) -> dict[str, Any]:
 
     Raises:
         AttributeError: If called without authentication decorator applied
-
-    Example:
-    ```python
-    @router.get("/me")
-    async def get_current_user_info(
-        request: Request,
-        user: dict = Depends(token_required())
-    ):
-        # Both methods work:
-        user_from_state = get_current_user(request)
-        # OR use the injected 'user' parameter directly
-        return {"user": user}
-    ```
     """
     if not hasattr(request.state, "user"):
         raise AttributeError(
