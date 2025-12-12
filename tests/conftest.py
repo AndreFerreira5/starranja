@@ -246,11 +246,11 @@ async def registered_user(
     )
     assert response.status_code == 201, f"Registration failed with {response.status_code}: {response.text}"
 
-    # Preserve both created user, admin info, AND the response body
+    # Preserve both created user, admin info, and the response body
     return {
         "user_data": sample_user_data,
         "admin": admin_token["user_data"],
-        "response": response.json(),  # <--- THIS WAS MISSING
+        "response": response.json(),
     }
 
 
@@ -365,7 +365,6 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
     )
 
     test_session.add(new_user)
-    # Don't flush yet, wait until we add roles so we can do it all at once
 
     # Fetch the role to assign
     result = await test_session.execute(select(Role).where(Role.name == "mecanico"))
@@ -383,8 +382,6 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
 @pytest_asyncio.fixture
 async def admin_user(client: AsyncClient, test_session):
     """Create an admin user for testing"""
-    # 1. Ensure admin role exists (it should from seed, but let's be safe)
-    # (Assuming roles are already seeded by your migrations or init logic)
 
     admin_data = {
         "username": "test_admin",
@@ -394,11 +391,6 @@ async def admin_user(client: AsyncClient, test_session):
         "role": "admin",
     }
 
-    # 2. Use the bootstrap endpoint or manual DB insertion
-    # Since /auth/register is protected, we use bootstrap if available
-    # OR we just insert into DB manually to bypass API restrictions.
-
-    # Let's try the bootstrap endpoint you added earlier
     res = await client.post("/auth/bootstrap-admin", json=admin_data)
 
     if res.status_code == 201 or res.status_code == 200:
