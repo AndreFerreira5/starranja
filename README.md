@@ -23,3 +23,26 @@ pre-commit install
 ```
 
 Now, every time you commit, the checks are ran and if failed, they prevent your commit from going through!
+
+## API Breaking Changes
+
+### Authentication Changes (RBAC)
+
+**⚠️ BREAKING CHANGE**: The `/auth/register` endpoint is now protected by RBAC (Role-Based Access Control).
+
+- **Previous behavior**: Public endpoint - anyone could register a new user
+- **New behavior**: Protected endpoint - requires authentication with admin, gerente, or mecanico_gerente roles
+
+**Impact**: 
+- External clients/scripts expecting to self-register will receive 401/403 errors
+- User registration must now be performed by authenticated administrators or managers
+
+**Migration**:
+- For initial setup: Use `/auth/bootstrap-admin` (development/test only) to create the first admin user
+- For production: Manually create initial admin user via database seeding or deployment scripts
+- Frontend applications must update to require admin login before allowing user registration
+
+**Development-only endpoints**:
+- `/auth/bootstrap-admin` is only available when `ENVIRONMENT != "production"`
+- This endpoint is excluded from production deployments at the router level
+- Tests will fail loudly if accidentally run with `ENVIRONMENT=production`

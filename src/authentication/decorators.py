@@ -165,24 +165,26 @@ class AuthenticationRequired:
             user_roles = payload.get("roles")
 
             if user_roles is None:
-                logger.error(
+                logger.warning(
                     f"Token for user {payload.get('user_id')} missing 'roles' claim. "
-                    "This indicates a token service configuration error."
+                    "Possible token tampering or outdated token format."
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Token missing required claims. Please contact administrator.",
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token format",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
 
             # Ensure user_roles is a list
             if not isinstance(user_roles, list):
-                logger.error(
+                logger.warning(
                     f"Token for user {payload.get('user_id')} has invalid 'roles' format. "
                     f"Expected list, got {type(user_roles).__name__}"
                 )
                 raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Token has invalid format. Please contact administrator.",
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid token format",
+                    headers={"WWW-Authenticate": "Bearer"},
                 )
 
             # Normalize user roles for case-insensitive comparison
@@ -193,17 +195,14 @@ class AuthenticationRequired:
 
             if not has_permission:
                 logger.warning(
-                    f"Authorization denied for user {payload.get('user_id')} "
-                    f"with roles {user_roles}. Required roles: {self.required_roles}"
+                    f"Authorization denied for user {payload.get('user_id')}. Required one of: {self.required_roles}"
                 )
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Insufficient permissions. Required roles: {', '.join(self.required_roles)}",
                 )
 
-            logger.debug(
-                f"Authorization granted for user {payload.get('user_id')} with matching role from {user_roles}"
-            )
+            logger.debug(f"Authorization granted for user {payload.get('user_id')}")
 
         return payload
 

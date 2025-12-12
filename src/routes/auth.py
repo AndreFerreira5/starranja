@@ -30,6 +30,10 @@ logger = logging.getLogger(__name__)
 password_service = PasswordService()
 router = APIRouter()
 
+# Development-only router for sensitive endpoints
+# This router should NOT be included in production deployments
+dev_router = APIRouter()
+
 
 @router.post(
     "/login",
@@ -125,7 +129,7 @@ async def login_user(
         )
 
 
-@router.post(
+@dev_router.post(
     "/bootstrap-admin",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
@@ -137,10 +141,10 @@ async def bootstrap_admin_user(
     """
     Test/dev-only endpoint to ensure an admin user exists.
 
-    This MUST NOT be enabled in production. It is used by automated tests
-    to create an initial admin account independent of RBAC.
+    This endpoint is ONLY available in non-production environments.
+    It should be excluded from production router registration entirely.
     """
-    # Read environment from flat Settings model; default to "production" if unset
+    # Double-check environment as defense-in-depth
     env_value = getattr(settings, "ENVIRONMENT", "production")
     if env_value.lower() == "production":
         raise HTTPException(
@@ -227,9 +231,8 @@ async def register_user(
     try:
         # Optional: audit logging of who is creating users
         logger.info(
-            "User registration requested by %s with roles %s",
+            "User registration requested by user_id: %s",
             current_user.get("user_id"),
-            current_user.get("roles"),
         )
 
         # Check if username already exists

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
+from src.config import settings
 from src.db.connection import auth_db_connect, auth_db_disconnect
 from src.exceptions.clients import (
     ClientDatabaseError,
@@ -60,6 +61,13 @@ app = FastAPI(
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+
+# Only include development endpoints in non-production environments
+if settings.ENVIRONMENT.lower() != "production":
+    logger.info("Development mode: Including /auth/bootstrap-admin endpoint")
+    app.include_router(auth.dev_router, prefix="/auth", tags=["Auth"])
+else:
+    logger.info("Production mode: /auth/bootstrap-admin endpoint excluded")
 
 
 @app.get("/ping")

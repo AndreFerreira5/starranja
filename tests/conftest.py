@@ -257,9 +257,18 @@ async def registered_user(
 async def admin_token(client: AsyncClient) -> dict:
     """
     - In non-production (e.g. ENVIRONMENT=test), uses /auth/bootstrap-admin.
-    - If bootstrap is forbidden (ENVIRONMENT=production), RBAC auth tests
-      are skipped instead of failing the whole suite.
+    - If ENVIRONMENT=production in CI, fails the test suite loudly to prevent
+      silent test skipping.
     """
+    # Check if we're in production mode - fail loudly if so
+    env_value = os.getenv("ENVIRONMENT", "").lower()
+    if env_value == "production":
+        pytest.fail(
+            "CRITICAL: Test suite is running with ENVIRONMENT=production. "
+            "This would skip RBAC tests and create a false-positive CI result. "
+            "Set ENVIRONMENT=test in your CI configuration."
+        )
+
     random_suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=8))
     admin_data = {
         "username": f"admin_user_{random_suffix}",
@@ -273,9 +282,13 @@ async def admin_token(client: AsyncClient) -> dict:
     resp_boot = await client.post("/auth/bootstrap-admin", json=admin_data)
 
     if resp_boot.status_code == 403:
-        # Environment explicitly forbids bootstrap (e.g. production CI).
-        pytest.skip(
-            "Admin bootstrap not allowed in this environment (ENVIRONMENT=production). Skipping RBAC auth tests."
+        # This should not happen now with the environment check above,
+        # but keep as defense-in-depth
+        pytest.fail(
+            "Admin bootstrap returned 403. This indicates either:\n"
+            "1. ENVIRONMENT is set to 'production' (check env vars)\n"
+            "2. The /auth/bootstrap-admin endpoint was not registered (check main.py)\n"
+            "Tests cannot proceed without admin bootstrap capability."
         )
 
     assert resp_boot.status_code in (200, 201), f"Admin bootstrap failed: {resp_boot.status_code} {resp_boot.text}"
