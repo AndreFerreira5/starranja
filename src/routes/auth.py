@@ -12,9 +12,11 @@ from src.config import settings
 from src.db.clients import (
     assign_role_to_user,
     create_user,
+    delete_user,
     get_role_by_name,
     get_roles_by_user_id,
     get_user_by_username,
+    update_user,
 )
 from src.db.connection import get_auth_db
 from src.models.schemas import (
@@ -22,6 +24,7 @@ from src.models.schemas import (
     LoginRequest,
     RegisterRequest,
     UserResponse,
+    UserUpdate,
 )
 
 logger = logging.getLogger(__name__)
@@ -404,3 +407,96 @@ async def refresh_access_token(
     except Exception as e:
         logger.error(f"Refresh token error: {e}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+
+@router.patch(
+    "/users/{user_id}",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(token_required(roles=["admin"]))],
+)
+async def update_user_endpoint(
+    user_id: str,
+    update_data: UserUpdate,
+    db: AsyncSession = Depends(get_auth_db),
+    current_user: dict = Depends(token_required(roles=["admin"])),
+) -> UserResponse:
+    """
+    Update a user profile.
+    Restricted to 'admin' role only.
+    """
+    try:
+        # Pass password_service to handle hashing if password is updated
+        updated_user = await update_user(
+            db=db,
+            user_id=user_id,
+            user_update=update_data,
+            password_service=password_service,
+        )
+
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        logger.info("User %s updated by admin %s", user_id, current_user.get("user_id"))
+        return UserResponse.model_validate(updated_user)
+
+    except ValueError as e:
+        # Catch errors like missing password service
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating user: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not update user",
+        )
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(token_required(roles=["admin"]))],
+)
+async def delete_user_endpoint(
+    user_id: str,
+    db: AsyncSession = Depends(get_auth_db),
+    current_user: dict = Depends(token_required(roles=["admin"])),
+) -> None:
+    """
+    Delete a user permanently.
+    Restricted to 'admin' role only.
+    """
+    try:
+        # Prevent admin from deleting themselves
+        if str(user_id) == str(current_user.get("user_id")):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="You cannot delete your own account.",
+            )
+
+        success = await delete_user(db, user_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+
+        logger.info("User %s deleted by admin %s", user_id, current_user.get("user_id"))
+        return None
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Could not delete user",
+        )
