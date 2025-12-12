@@ -377,27 +377,3 @@ async def test_user(test_session: AsyncSession, password_service: PasswordServic
     await test_session.refresh(new_user)
 
     return new_user
-
-
-@pytest_asyncio.fixture
-async def admin_user(client: AsyncClient, test_session):
-    """Create an admin user for testing"""
-
-    admin_data = {
-        "username": "test_admin",
-        "password": "AdminPass123!",
-        "full_name": "Test Admin",
-        "email": "admin_test@example.com",
-        "role": "admin",
-    }
-
-    res = await client.post("/auth/bootstrap-admin", json=admin_data)
-
-    if res.status_code == 201 or res.status_code == 200:
-        return admin_data
-
-    # Fallback: if user exists, just return credentials
-    if res.status_code == 400 and "exists" in res.text:
-        return admin_data
-
-    raise Exception(f"Failed to create admin user: {res.text}")

@@ -7,13 +7,9 @@ from src.models.auth import User
 
 @pytest.mark.asyncio
 class TestAdminActions:
-    async def test_admin_can_update_user(self, client: AsyncClient, admin_user: dict, registered_user: dict):
+    async def test_admin_can_update_user(self, client: AsyncClient, admin_token: dict, registered_user: dict):
         """Test that an admin can update another user's profile"""
-        # 1. Login as Admin
-        login_res = await client.post(
-            "/auth/login", json={"username": admin_user["username"], "password": admin_user["password"]}
-        )
-        admin_token = login_res.json()["access_token"]
+        admin_token = admin_token["token"]
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         # Target user ID (from the registered_user fixture)
@@ -26,7 +22,7 @@ class TestAdminActions:
         assert update_res.status_code == 200
         assert update_res.json()["full_name"] == new_name
 
-    async def test_admin_can_delete_user(self, client: AsyncClient, admin_user: dict, test_session):
+    async def test_admin_can_delete_user(self, client: AsyncClient, admin_token: dict, test_session):
         """Test that an admin can delete a user"""
         # 1. Create a temporary user to delete
         temp_user_data = {
@@ -37,10 +33,7 @@ class TestAdminActions:
             "role": "mecanico",
         }
 
-        login_res = await client.post(
-            "/auth/login", json={"username": admin_user["username"], "password": admin_user["password"]}
-        )
-        admin_token = login_res.json()["access_token"]
+        admin_token = admin_token["token"]
         headers = {"Authorization": f"Bearer {admin_token}"}
 
         create_res = await client.post("/auth/register", json=temp_user_data, headers=headers)
@@ -94,12 +87,10 @@ class TestAdminActions:
         res = await client.delete(f"/auth/users/{target_id}", headers=headers)
         assert res.status_code == 403
 
-    async def test_update_non_existent_user(self, client: AsyncClient, admin_user: dict):
+    async def test_update_non_existent_user(self, client: AsyncClient, admin_token: dict):
         """Test updating a UUID that doesn't exist"""
-        login_res = await client.post(
-            "/auth/login", json={"username": admin_user["username"], "password": admin_user["password"]}
-        )
-        headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
+        # Use the token provided by the fixture directly
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
         fake_id = "00000000-0000-0000-0000-000000000000"
         res = await client.patch(f"/auth/users/{fake_id}", json={"full_name": "Ghost"}, headers=headers)
