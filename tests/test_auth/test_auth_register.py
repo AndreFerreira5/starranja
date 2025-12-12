@@ -7,13 +7,21 @@ from src.db.clients import get_user_by_username
 
 @pytest.mark.asyncio
 class TestRegisterEndpoint:
-    """Test cases for user registration endpoint"""
+    """Test cases for user registration endpoint."""
 
-    async def test_register_success(self, client: AsyncClient, test_session: AsyncSession, sample_user_data: dict):
-        """Test successful user registration"""
-        response = await client.post("/auth/register", json=sample_user_data)
+    async def test_register_success(
+        self,
+        client: AsyncClient,
+        test_session: AsyncSession,
+        sample_user_data: dict,
+        admin_token: dict,
+    ):
+        """Test successful user registration with valid admin credentials."""
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
+        response = await client.post("/auth/register", json=sample_user_data, headers=headers)
         assert response.status_code == 201
+
         data = response.json()
         assert data["username"] == sample_user_data["username"]
         assert data["email"] == sample_user_data["email"]
@@ -27,62 +35,89 @@ class TestRegisterEndpoint:
         assert user is not None
         assert user.username == sample_user_data["username"]
 
-    async def test_register_without_email(self, client: AsyncClient, sample_user_data_no_email: dict):
-        """Test registration without email (optional field)"""
-        response = await client.post("/auth/register", json=sample_user_data_no_email)
+    async def test_register_without_email(
+        self,
+        client: AsyncClient,
+        sample_user_data_no_email: dict,
+        admin_token: dict,
+    ):
+        """Test registration without email (optional field)."""
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
+        response = await client.post(
+            "/auth/register",
+            json=sample_user_data_no_email,
+            headers=headers,
+        )
         assert response.status_code == 201
+
         data = response.json()
         assert data["username"] == sample_user_data_no_email["username"]
         assert data["email"] is None
 
-    async def test_register_duplicate_username(self, client: AsyncClient, sample_user_data: dict):
-        """Test registration with duplicate username"""
+    async def test_register_duplicate_username(
+        self,
+        client: AsyncClient,
+        sample_user_data: dict,
+        admin_token: dict,
+    ):
+        """Test registration with duplicate username."""
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
+
         # Register first user
-        response1 = await client.post("/auth/register", json=sample_user_data)
+        response1 = await client.post("/auth/register", json=sample_user_data, headers=headers)
         assert response1.status_code == 201
 
         # Try to register with same username
-        response2 = await client.post("/auth/register", json=sample_user_data)
-
-        # --- FIX 1: Assert 400 and the correct error message ---
+        response2 = await client.post("/auth/register", json=sample_user_data, headers=headers)
         assert response2.status_code == 400
         assert "username already exists" in response2.json()["detail"].lower()
 
-    async def test_register_invalid_password_too_short(self, client: AsyncClient):
-        """Test registration with password too short"""
-
-        # --- FIX 2: Add all required fields, including a valid "role" ---
+    async def test_register_invalid_password_too_short(
+        self,
+        client: AsyncClient,
+        admin_token: dict,
+    ):
+        """Test registration with password too short."""
         user_data = {
             "username": "shortpass",
-            "password": "short",  # This is the field we are testing
+            "password": "short",  # too short
             "full_name": "Short Pass User",
             "email": "short@example.com",
-            "role": "mecanico",  # Added missing required field
+            "role": "mecanico",
         }
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
-        response = await client.post("/auth/register", json=user_data)
-
-        # Now we can be sure the 422 is for the password length
+        response = await client.post("/auth/register", json=user_data, headers=headers)
+        # Schema validation should reject short password
         assert response.status_code == 422
 
-        # Optional: A better assertion to check the error detail
         data = response.json()
         assert "detail" in data
-        # Check that the validation error refers to the 'password' field
         assert any("password" in err["loc"] for err in data["detail"])
 
-    async def test_register_missing_required_fields(self, client: AsyncClient):
-        """Test registration with missing required fields"""
-        # Missing password, full_name, and role
-        incomplete_data = {"username": "incomplete"}
+    async def test_register_missing_required_fields(
+        self,
+        client: AsyncClient,
+        admin_token: dict,
+    ):
+        """Test registration with missing required fields."""
+        incomplete_data = {"username": "incomplete"}  # missing password, full_name, role
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
 
-        response = await client.post("/auth/register", json=incomplete_data)
+        response = await client.post("/auth/register", json=incomplete_data, headers=headers)
         assert response.status_code == 422
 
-    async def test_register_multiple_users(self, client: AsyncClient, multiple_users_data: list):
-        """Test registering multiple different users"""
+    async def test_register_multiple_users(
+        self,
+        client: AsyncClient,
+        multiple_users_data: list[dict],
+        admin_token: dict,
+    ):
+        """Test registering multiple different users."""
+        headers = {"Authorization": f"Bearer {admin_token['token']}"}
+
         for user_data in multiple_users_data:
-            response = await client.post("/auth/register", json=user_data)
+            response = await client.post("/auth/register", json=user_data, headers=headers)
             assert response.status_code == 201
             assert response.json()["username"] == user_data["username"]
