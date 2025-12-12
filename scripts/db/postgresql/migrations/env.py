@@ -27,13 +27,14 @@ load_result = load_dotenv(os.path.join(ROOT_DIR, CONFIG_FILENAME), override=True
 # Function to get the database URL
 def get_url():
     # Use os.getenv() to read the environment variable
-    url = os.getenv("AUTH_DATABASE_URL")
-    print(url)
+    url = os.getenv("DATABASE__AUTH_DATABASE_URL")
+    # print(url)  # Optional: comment out to keep logs clean
 
     if url is None:
-        raise Exception("AUTH_DATABASE_URL environment variable is not set.")
+        raise Exception("DATABASE__AUTH_DATABASE_URL environment variable is not set.")
 
-    return url
+    # FIX: Force synchronous driver for Alembic execution
+    return url.replace("postgresql+asyncpg", "postgresql")
 
 
 def run_migrations_offline():

@@ -1,14 +1,14 @@
 import logging
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.authentication.decorators import token_required
 from src.authentication.services.password import PasswordService
-from src.authentication.services.token import (
-    generate_token as token_generator_fn,
-)
 from src.config import settings
+from src.authentication.services.refresh_token_service import RefreshTokenService
+from src.authentication.services.token import generate_token as token_generator_fn
 from src.db.clients import (
     assign_role_to_user,
     create_user,
@@ -26,6 +26,7 @@ from src.models.schemas import (
 
 logger = logging.getLogger(__name__)
 
+# Instantiate services outside if they are stateless, or inside dependency
 password_service = PasswordService()
 router = APIRouter()
 
@@ -37,10 +38,11 @@ router = APIRouter()
 )
 async def login_user(
     request: LoginRequest,
+    response: Response,
     db: AsyncSession = Depends(get_auth_db),
 ) -> AuthResponse:
     """
-    Login endpoint: authenticate user and return a PASETO token.
+    Login endpoint: authenticates user and returns PASETO access token AND refresh token.
 
     Raises 401 for invalid credentials and 500 for unexpected errors.
     """
@@ -75,9 +77,9 @@ async def login_user(
         roles = await get_roles_by_user_id(db, str(user.id))
         role_names = [role.name for role in roles]
 
-        # Generate token
+        # 1. Generate Access Token
         try:
-            token = token_generator_fn(
+            access_token = token_generator_fn(
                 user_id=str(user.id),
                 roles=role_names,
             )
@@ -88,8 +90,32 @@ async def login_user(
                 detail="Error generating authentication token",
             )
 
-        return AuthResponse(access_token=token, token_type="Bearer")
+        # 2. Generate Refresh Token
+        try:
+            # Instantiate service with dependencies
+            refresh_service = RefreshTokenService(db, password_service)
+            refresh_token = await refresh_service.generate_refresh_token(UUID(str(user.id)))
+        except Exception as refresh_error:
+            logger.error(f"Refresh token generation error: {refresh_error}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error generating refresh token"
+            )
 
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            httponly=True,  # Mitigates XSS (JS cannot access this)
+            secure=True,  # Only sends over HTTPS (False for localhost testing if not https)
+            samesite="strict",  # CSRF protection
+            max_age=7 * 24 * 60 * 60,  # 7 days in seconds
+        )
+
+        # 3. Return ONLY Access Token in Body
+        return AuthResponse(
+            access_token=access_token,
+            token_type="Bearer",
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -229,7 +255,7 @@ async def register_user(
                 detail="Error processing password",
             )
 
-        # Create user with hashed_password parameter
+        # Create user
         try:
             new_user = await create_user(
                 db=db,
@@ -300,14 +326,11 @@ async def register_user(
                 detail="Error saving user",
             )
 
-        # Refresh to get the latest data including created_at timestamp
+        # Refresh to get the latest data
         try:
             await db.refresh(new_user)
         except Exception as refresh_error:
-            logger.warning(
-                "Failed to refresh user object: %s",
-                refresh_error,
-            )
+            logger.warning("Failed to refresh user object: %s", refresh_error)
 
         logger.info(
             "User registration completed successfully: %s",
@@ -326,3 +349,59 @@ async def register_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred. Please try again later.",
         )
+
+
+@router.post("/refresh", response_model=AuthResponse)
+async def refresh_access_token(
+    response: Response,
+    refresh_token: str | None = Cookie(None),
+    db: AsyncSession = Depends(get_auth_db),
+):
+    """
+    Refresh Access Token Endpoint.
+
+    1. Validates the refresh token (from HttpOnly cookie).
+    2. Revokes the old refresh token (Token Rotation).
+    3. Issues a new Access Token and a new Refresh Token.
+    """
+    if not refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing")
+
+    # Instantiate services
+    refresh_service = RefreshTokenService(db, password_service)
+
+    try:
+        # 1. Validate the existing refresh token
+        token_record = await refresh_service.validate_refresh_token(refresh_token)
+        user_id = token_record.user_id
+
+        # 2. Revoke the old token (Token Rotation)
+        await refresh_service.revoke_refresh_token(UUID(str(token_record.id)))
+
+        # 3. Get user roles for the new access token
+        roles = await get_roles_by_user_id(db, str(user_id))
+        role_names = [role.name for role in roles]
+
+        # 4. Generate NEW Access Token
+        new_access_token = token_generator_fn(user_id=str(user_id), roles=role_names)
+
+        # 5. Generate NEW Refresh Token
+        new_refresh_token = await refresh_service.generate_refresh_token(UUID(str(user_id)))
+
+        # 6. Set the NEW Refresh Token in HttpOnly Cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=True,  # Set False if testing on localhost without HTTPS
+            samesite="strict",
+            max_age=7 * 24 * 60 * 60,  # 7 days
+        )
+
+        return AuthResponse(access_token=new_access_token, token_type="Bearer")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Refresh token error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")

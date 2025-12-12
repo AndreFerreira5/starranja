@@ -414,4 +414,66 @@ db.appointments.createIndex({ status: 1, appointmentDate: 1 });
 
 print("Collection 'appointments' created successfully.");
 
+/*
+ * =================================================================
+ * Collection: supplierOrders
+ * =================================================================
+ */
+
+db.createCollection("supplierOrders");
+
+db.runCommand({
+  collMod: "supplierOrders",
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: [
+        "supplierName",
+        "description",
+        "status",
+        "createdById",
+        "createdAt",
+        "updatedAt"
+        // "workOrderId" is NOT required
+      ],
+      properties: {
+        supplierName: {
+          bsonType: "string",
+          description: "Name of the supplier/vendor"
+        },
+        description: {
+          bsonType: "string",
+          description: "Summary of what was ordered"
+        },
+        workOrderId: {
+          bsonType: ["objectId", "null"], // Optional/Nullable
+          description: "Link to a work order (optional)"
+        },
+        status: {
+          enum: ["Pending", "Ordered", "Shipped", "Received", "Cancelled"], //Probably only Ordered, Received and Cancelled are going to be used
+          description: "Status of the order"
+        },
+        createdById: {
+          bsonType: "string",
+          description: "User UUID who placed the order"
+        },
+        orderDate: {bsonType: "ISODate"},
+        estimatedDelivery: {bsonType: "ISODate"},
+        createdAt: {bsonType: "ISODate"},
+        updatedAt: {bsonType: "ISODate"}
+      }
+    }
+  },
+  validationAction: "error"
+});
+
+// Indexes
+db.supplierOrders.createIndex({ workOrderId: 1 }, { sparse: true }); // Sparse index automatically handled by Mongo if null
+db.supplierOrders.createIndex({status: 1});
+db.supplierOrders.createIndex({createdAt: -1}); // Newest orders first
+db.supplierOrders.createIndex({supplierName: 1});
+
+print("[✓] Collection 'supplierOrders' created successfully.");
+
+
 print("\n--- StArranja Database Setup Complete ---");
