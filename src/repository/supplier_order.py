@@ -3,12 +3,14 @@ from uuid import UUID
 
 from bson import ObjectId
 
+from src.exceptions.supplier_order import SupplierOrderDatabaseError
 from src.models.supplier_order import (
     SupplierOrder,
     SupplierOrderCreate,
     SupplierOrderStatus,
     SupplierOrderUpdate,
 )
+from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,7 @@ class SupplierOrderRepo:
         self.db = db
         self.collection = "supplierOrders"
 
+    @handle_repo_errors("create_supplier_order", SupplierOrderDatabaseError)
     async def create_supplier_order(self, order_data: SupplierOrderCreate, created_by_id: UUID) -> SupplierOrder:
         """
         Create a new supplier order.
@@ -46,6 +49,7 @@ class SupplierOrderRepo:
         logger.info(f"Successfully created supplier order: {supplier_order.id}")
         return supplier_order
 
+    @handle_repo_errors("get_by_id", SupplierOrderDatabaseError)
     async def get_by_id(self, order_id: ObjectId) -> SupplierOrder | None:
         """
         Retrieve a supplier order by its ID.
@@ -65,6 +69,7 @@ class SupplierOrderRepo:
 
         return order
 
+    @handle_repo_errors("get_by_work_order_id", SupplierOrderDatabaseError)
     async def get_by_work_order_id(self, work_order_id: ObjectId) -> list[SupplierOrder]:
         """
         Retrieve all supplier orders linked to a specific work order.
@@ -82,6 +87,7 @@ class SupplierOrderRepo:
         logger.debug(f"Found {len(orders)} orders linked to WO {work_order_id}")
         return orders
 
+    @handle_repo_errors("get_by_status", SupplierOrderDatabaseError)
     async def get_by_status(self, status: SupplierOrderStatus) -> list[SupplierOrder]:
         """
         Retrieve all supplier orders with a specific status.
@@ -99,6 +105,7 @@ class SupplierOrderRepo:
         logger.debug(f"Found {len(orders)} orders with status {status}")
         return orders
 
+    @handle_repo_errors("get_by_supplier_name", SupplierOrderDatabaseError)
     async def get_by_supplier_name(self, supplier_name: str) -> list[SupplierOrder]:
         """
         Retrieve all supplier orders for a specific vendor.
@@ -116,6 +123,7 @@ class SupplierOrderRepo:
 
         return orders
 
+    @handle_repo_errors("update", SupplierOrderDatabaseError)
     async def update(self, order_id: ObjectId, update_data: SupplierOrderUpdate) -> SupplierOrder | None:
         """
         Update an existing supplier order.
@@ -150,6 +158,7 @@ class SupplierOrderRepo:
         logger.info(f"Successfully updated supplier order: {order_id}")
         return order
 
+    @handle_repo_errors("delete", SupplierOrderDatabaseError)
     async def delete(self, order_id: ObjectId) -> bool:
         """
         Delete a supplier order.

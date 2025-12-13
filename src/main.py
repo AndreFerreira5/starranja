@@ -19,9 +19,15 @@ from src.exceptions.handlers import (
     duplicate_client_email_handler,
     duplicate_client_nif_handler,
     invalid_client_data_handler,
+    supplier_order_database_error_handler,
+    supplier_order_not_found_handler,
     work_order_database_error_handler,
     work_order_not_found_handler,
     work_order_number_conflict_handler,
+)
+from src.exceptions.supplier_order import (
+    SupplierOrderDatabaseError,
+    SupplierOrderNotFoundError,
 )
 from src.exceptions.work_orders import (
     ActiveWorkOrderExistsError,
@@ -56,6 +62,8 @@ app = FastAPI(
         DuplicateClientEmailError: duplicate_client_email_handler,
         InvalidClientDataError: invalid_client_data_handler,
         ClientDatabaseError: client_database_error_handler,
+        SupplierOrderDatabaseError: supplier_order_database_error_handler,
+        SupplierOrderNotFoundError: supplier_order_not_found_handler,
     },
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])

@@ -11,6 +11,10 @@ from src.exceptions.clients import (
     DuplicateClientNIFError,
     InvalidClientDataError,
 )
+from src.exceptions.supplier_order import (
+    SupplierOrderDatabaseError,
+    SupplierOrderNotFoundError,
+)
 from src.exceptions.work_orders import (
     ActiveWorkOrderExistsError,
     WorkOrderDatabaseError,
@@ -125,6 +129,35 @@ async def invalid_client_data_handler(request: Request, exc: InvalidClientDataEr
 
 async def client_database_error_handler(request: Request, exc: ClientDatabaseError) -> Response:
     """Handle ClientDatabaseError with 500 Internal Server Error."""
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "error": "database_error",
+            "message": "An unexpected database error occurred",
+            "operation": exc.operation,
+        },
+    )
+
+
+# ============================================================================
+# SUPPLIER ORDER EXCEPTION HANDLERS
+# ============================================================================
+
+
+async def supplier_order_not_found_handler(request: Request, exc: SupplierOrderNotFoundError) -> Response:
+    """Handle SupplierOrderNotFoundError with 404 response."""
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={
+            "error": "not_found",
+            "message": str(exc),
+            "identifier": exc.identifier,
+        },
+    )
+
+
+async def supplier_order_database_error_handler(request: Request, exc: SupplierOrderDatabaseError) -> Response:
+    """Handle SupplierOrderDatabaseError with 500 Internal Server Error."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
