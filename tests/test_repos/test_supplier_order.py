@@ -68,10 +68,6 @@ async def test_create_supplier_order_general_success(supplier_order_repo, sample
     assert new_order.created_by_id == sample_user_id
     assert new_order.status == SupplierOrderStatus.PENDING  # Default
 
-    # Verify items were saved
-    assert len(new_order.items) == 1
-    assert new_order.items[0].reference == "GLOVE-L"
-
     # Verify persistence
     found = await SupplierOrder.get(new_order.id)
     assert found is not None

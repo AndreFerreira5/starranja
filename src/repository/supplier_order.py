@@ -30,7 +30,21 @@ class SupplierOrderRepo:
             The created SupplierOrder document
         """
         logger.info(f"Creating supplier order for: {order_data.supplier_name}")
-        raise NotImplementedError("create_supplier_order not implemented yet")
+
+        # Create the document instance from the Pydantic schema
+        # We manually inject created_by_id since it's not in the 'Create' schema
+        supplier_order = SupplierOrder(
+            **order_data.model_dump(),
+            created_by_id=created_by_id,
+            # status defaults to PENDING via the model definition
+            # order_date defaults to NOW via the model definition
+        )
+
+        # Insert into the database
+        await supplier_order.insert()
+
+        logger.info(f"Successfully created supplier order: {supplier_order.id}")
+        return supplier_order
 
     async def get_by_id(self, order_id: ObjectId) -> SupplierOrder | None:
         """
@@ -43,7 +57,13 @@ class SupplierOrderRepo:
             SupplierOrder document or None
         """
         logger.debug(f"Retrieving supplier order by ID: {order_id}")
-        raise NotImplementedError("get_by_id not implemented yet")
+        # Use Beanie's .get() for direct primary key lookup
+        order = await SupplierOrder.get(order_id)
+
+        if not order:
+            logger.debug(f"Supplier order {order_id} not found")
+
+        return order
 
     async def get_by_work_order_id(self, work_order_id: ObjectId) -> list[SupplierOrder]:
         """
@@ -56,7 +76,11 @@ class SupplierOrderRepo:
             List of SupplierOrder documents
         """
         logger.debug(f"Retrieving supplier orders for work order: {work_order_id}")
-        raise NotImplementedError("get_by_work_order_id not implemented yet")
+        # Use .find() with a filter expression
+        orders = await SupplierOrder.find(SupplierOrder.work_order_id == work_order_id).to_list()
+
+        logger.debug(f"Found {len(orders)} orders linked to WO {work_order_id}")
+        return orders
 
     async def get_by_status(self, status: SupplierOrderStatus) -> list[SupplierOrder]:
         """
@@ -69,7 +93,11 @@ class SupplierOrderRepo:
             List of SupplierOrder documents
         """
         logger.debug(f"Retrieving supplier orders with status: {status}")
-        raise NotImplementedError("get_by_status not implemented yet")
+
+        orders = await SupplierOrder.find(SupplierOrder.status == status).to_list()
+
+        logger.debug(f"Found {len(orders)} orders with status {status}")
+        return orders
 
     async def get_by_supplier_name(self, supplier_name: str) -> list[SupplierOrder]:
         """
@@ -82,7 +110,11 @@ class SupplierOrderRepo:
             List of SupplierOrder documents
         """
         logger.debug(f"Retrieving supplier orders for supplier: {supplier_name}")
-        raise NotImplementedError("get_by_supplier_name not implemented yet")
+
+        # Simple exact match on the string field
+        orders = await SupplierOrder.find(SupplierOrder.supplier_name == supplier_name).to_list()
+
+        return orders
 
     async def update(self, order_id: ObjectId, update_data: SupplierOrderUpdate) -> SupplierOrder | None:
         """
@@ -96,7 +128,27 @@ class SupplierOrderRepo:
             Updated SupplierOrder document or None
         """
         logger.debug(f"Updating supplier order: {order_id}")
-        raise NotImplementedError("update not implemented yet")
+
+        # Fetch the existing document
+        order = await SupplierOrder.get(order_id)
+
+        if not order:
+            logger.warning(f"Supplier order {order_id} not found for update")
+            return None
+
+        # Convert update schema to dict, removing unset fields
+        # by_alias=True ensures fields like 'supplierName' map correctly to DB
+        update_dict = update_data.model_dump(by_alias=True, exclude_unset=True)
+
+        # Apply updates to the document in memory
+        if update_dict:
+            await order.set(update_dict)
+
+            # Save to persist changes (and update updatedAt timestamp)
+            await order.save()
+
+        logger.info(f"Successfully updated supplier order: {order_id}")
+        return order
 
     async def delete(self, order_id: ObjectId) -> bool:
         """
@@ -109,4 +161,16 @@ class SupplierOrderRepo:
             True if deleted, False if not found
         """
         logger.info(f"Deleting supplier order: {order_id}")
-        raise NotImplementedError("delete not implemented yet")
+
+        # Fetch the document
+        order = await SupplierOrder.get(order_id)
+
+        if not order:
+            logger.warning(f"Supplier order {order_id} not found for deletion")
+            return False
+
+        # Delete the document
+        await order.delete()
+
+        logger.info(f"Successfully deleted supplier order: {order_id}")
+        return True
