@@ -5,7 +5,12 @@ from decimal import Decimal
 from bson import Decimal128, ObjectId
 from fastapi import HTTPException
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
+from src.exceptions.invoices import (
+    InvoiceDatabaseError,
+    InvoiceNumberConflictError,
+)
 from src.models.client import Client
 from src.models.invoices import (
     Invoice,
@@ -42,9 +47,10 @@ class InvoiceRepo:
             )
             seq = counter_doc["seq"]
             return f"{seq:04d}"
+
         except Exception as e:
-            logger.error(f"Failed to generate invoice number: {e}", exc_info=True)
-            raise
+            logger.error(f"Error generating invoice number: {e}")
+            raise InvoiceDatabaseError("invoice number generation", str(e))
 
     @handle_repo_errors("create_invoice")
     async def create_invoice(self, invoice_data: InvoiceCreate) -> Invoice:
@@ -73,6 +79,7 @@ class InvoiceRepo:
             # Fallback if address is missing but required by InvoiceAddress model
             if not client_address:
                 addr_snapshot = InvoiceAddress(street="N/A", city="N/A", zipCode="0000-000")
+
             else:
                 # Assuming client.address matches InvoiceAddress structure or mapping is needed
                 addr_snapshot = InvoiceAddress(
@@ -136,9 +143,13 @@ class InvoiceRepo:
             logger.info(f"Invoice created with ID: {invoice.id}")
             return invoice
 
-        except Exception as e:
-            logger.error(f"Error creating invoice: {e}")
-            raise
+        except DuplicateKeyError as e:
+            logger.error(f"Invoice number conflict: {e}")
+
+            if e.details and e.details.get("keyPattern", {}).get("invoice_number"):
+                raise InvoiceNumberConflictError() from e
+
+            raise InvoiceDatabaseError("create invoice", str(e)) from e
 
     @handle_repo_errors("get_invoice_by_id")
     async def get_invoice_by_id(self, invoice_id: ObjectId) -> Invoice | None:
