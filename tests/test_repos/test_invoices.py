@@ -6,7 +6,7 @@ from bson import ObjectId
 from bson.decimal128 import Decimal128  # Required for financial fields
 from fastapi import HTTPException
 
-from src.models.client import Client
+from src.models.client import Address, Client
 from src.models.invoices import (
     Invoice,
     InvoiceAddress,
@@ -17,7 +17,7 @@ from src.models.invoices import (
     InvoiceVehicleDetails,
 )
 from src.models.vehicle import Vehicle
-from src.models.work_orders import WorkOrder, WorkOrderStatus
+from src.models.work_orders import WorkOrder, WorkOrderItem, WorkOrderStatus
 from src.repository.invoices import InvoiceRepo
 
 pytestmark = pytest.mark.asyncio
@@ -38,7 +38,7 @@ async def sample_client(init_db):
         phone="912345678",
         email="test@example.com",
         is_active=True,
-        # Add address here if Client model has it, otherwise we mock it in the invoice
+        address=Address(street="Test St", city="Lisbon", zipCode="1000-001"),
     )
     await client.save()
     return client
@@ -54,7 +54,6 @@ async def sample_vehicle(init_db, sample_client):
         model="Corolla",
         kilometers=1000,
         vin="1234567890ABCDEFG",
-        year=2020,
     )
     await vehicle.save()
     return vehicle
@@ -68,12 +67,27 @@ async def sample_work_order(init_db, sample_client, sample_vehicle):
         client_id=sample_client.id,
         vehicle_id=sample_vehicle.id,
         created_by_id=uuid4(),
+        mechanicsIds=[uuid4()],
         status=WorkOrderStatus.AWAITING_DIAGNOSTIC,
         is_active=True,
+        # CHANGE: items must be a list []
+        items=[
+            WorkOrderItem(
+                type="Labor",
+                description="Brake Fix",
+                reference="LAB-001",
+                quantity=Decimal128("2.0"),
+                unit_price_without_iva=Decimal128(
+                    "50.00"
+                ),  # Ensure field names match model definition (snake_case vs camelCase)
+                iva_rate=Decimal128("0.23"),
+                total_price_with_iva=Decimal128("123.00"),
+            )
+        ],
+        final_total_price_without_iva=Decimal128("100.00"),
+        final_total_iva=Decimal128("23.00"),
+        final_total_price_with_iva=Decimal128("123.00"),
         entry_date=datetime.now(UTC),
-        description="Fix brakes",
-        # Assuming work order has items, we mock them here logic-wise,
-        # but for the Invoice fixture we will manually inject items.
     )
     await work_order.save()
     return work_order
@@ -86,29 +100,19 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
     Includes snapshots of client, vehicle, and items.
     """
 
-    # 1. Prepare Snapshot Data
-    client_snapshot = InvoiceClientDetails(
-        name=sample_client.name,
-        nif=sample_client.nif,
-        address=InvoiceAddress(street="Test St", city="Lisbon", zipCode="1000-001"),
-    )
-
-    vehicle_snapshot = InvoiceVehicleDetails(
+    vehicle_details = InvoiceVehicleDetails(
         licensePlate=sample_vehicle.license_plate, brand=sample_vehicle.brand, model=sample_vehicle.model
     )
 
-    # Mock Items (matches WorkOrderItem schema)
-    items_snapshot = [
-        {
-            "type": "Labor",
-            "description": "Labor",
-            "reference": "LAB-001",
-            "quantity": Decimal128("2.0"),
-            "unitPriceWithoutIVA": Decimal128("50.00"),
-            "ivaRate": Decimal128("0.23"),
-            "totalPriceWithIVA": Decimal128("123.00"),
-        }
-    ]
+    client_details = InvoiceClientDetails(
+        name=sample_client.name,
+        nif=sample_client.nif,
+        address=InvoiceAddress(
+            street=sample_client.address.street,
+            city=sample_client.address.city,
+            zipCode=sample_client.address.zip_code,
+        ),
+    )
 
     # 2. Create Invoice Document
     invoice = Invoice(
@@ -120,13 +124,13 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
         client_id=sample_client.id,
         emitted_by_id=uuid4(),  # ID of the user generating the invoice
         # Snapshots
-        client_details=client_snapshot,
-        vehicle_details=vehicle_snapshot,
-        items=items_snapshot,
+        client_details=client_details,
+        vehicle_details=vehicle_details,
+        items=sample_work_order.items,
         # Totals
-        total_without_iva=Decimal128("100.00"),
-        total_iva=Decimal128("23.00"),
-        total_with_iva=Decimal128("123.00"),
+        total_without_iva=sample_work_order.final_total_price_without_iva,
+        total_iva=sample_work_order.final_total_iva,
+        total_with_iva=sample_work_order.final_total_price_with_iva,
     )
 
     await invoice.save()

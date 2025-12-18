@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from src.exceptions.invoices import (
+    ClientAddressMissingError,
     InvoiceDatabaseError,
     InvoiceNotFoundError,
     InvoiceNumberConflictError,
@@ -41,5 +42,17 @@ async def invoice_database_error_handler(request: Request, exc: InvoiceDatabaseE
             "error": "database_error",
             "message": "An unexpected database error occurred",
             "operation": exc.operation,
+        },
+    )
+
+
+async def client_address_missing_handler(request: Request, exc: ClientAddressMissingError) -> Response:
+    """Handle ClientAddressMissingError with 400 Bad Request."""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "client_address_missing",
+            "message": str(exc),
+            "client_id": exc.client_id,
         },
     )

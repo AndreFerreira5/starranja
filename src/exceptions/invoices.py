@@ -31,3 +31,11 @@ class InvoiceNumberConflictError(InvoiceError):
 
     def __init__(self):
         super().__init__("Invoice number generation conflict. Please try again.")
+
+
+class ClientAddressMissingError(InvoiceError):
+    """Raised when the client address is missing during invoice creation."""
+
+    def __init__(self, client_id: str):
+        self.client_id = client_id
+        super().__init__(f"Client address is missing for client ID: {client_id}")

@@ -1,14 +1,15 @@
 import logging
 from datetime import UTC, datetime  # Ensure UTC is imported
-from decimal import Decimal
 
-from bson import Decimal128, ObjectId
+from bson import ObjectId
 from fastapi import HTTPException
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from src.exceptions.invoices import (
+    ClientAddressMissingError,
     InvoiceDatabaseError,
+    InvoiceNotFoundError,
     InvoiceNumberConflictError,
 )
 from src.models.client import Client
@@ -59,26 +60,31 @@ class InvoiceRepo:
         try:
             # 1. Fetch the Work Order
             work_order = await WorkOrder.get(invoice_data.work_order_id)
+
+            # handler for missing work order needs to be added
             if not work_order:
                 raise HTTPException(status_code=404, detail=f"Work Order {invoice_data.work_order_id} not found")
 
             # 2. Fetch Related Entities (Client and Vehicle)
             client = await Client.get(work_order.client_id)
+
+            # handler for missing client needs to be added
             if not client:
                 raise HTTPException(status_code=404, detail=f"Client {work_order.client_id} not found")
 
             vehicle = await Vehicle.get(work_order.vehicle_id)
+
+            # handler for missing vehicle needs to be added
             if not vehicle:
                 # Handle edge case where vehicle might have been deleted, or raise 404
                 raise HTTPException(status_code=404, detail=f"Vehicle {work_order.vehicle_id} not found")
 
-            # 3. Create Snapshots for Client and Vehicle
-            # Note: Adjust address fields based on your actual Client model structure
+            # 3. Prepare Snapshots
             client_address = getattr(client, "address", None)
 
             # Fallback if address is missing but required by InvoiceAddress model
             if not client_address:
-                addr_snapshot = InvoiceAddress(street="N/A", city="N/A", zipCode="0000-000")
+                raise ClientAddressMissingError(str(client.id))
 
             else:
                 # Assuming client.address matches InvoiceAddress structure or mapping is needed
@@ -91,36 +97,11 @@ class InvoiceRepo:
             vehicle_snapshot = InvoiceVehicleDetails(
                 licensePlate=vehicle.license_plate, brand=vehicle.brand, model=vehicle.model
             )
+            invoice_items = work_order.items
 
-            # 4. Process Items and Calculate Totals
-            # Assuming work_order has an 'items' list. If not, initialize empty.
-            wo_items = getattr(work_order, "items", [])
-
-            invoice_items = []
-            total_without_iva = Decimal("0.00")
-            total_iva = Decimal("0.00")
-
-            for item in wo_items:
-                # Convert Decimal128 to Python Decimal for calculation
-                qty = item.quantity.to_decimal()
-                price = item.unit_price_without_iva.to_decimal()
-                iva_rate = item.iva_rate.to_decimal()
-
-                line_total = qty * price
-                line_iva = line_total * iva_rate
-
-                total_without_iva += line_total
-                total_iva += line_iva
-
-                # Append to invoice items (ensure structure matches InvoiceItem)
-                invoice_items.append(item)
-
-            total_with_iva = total_without_iva + total_iva
-
-            # 5. Generate Invoice Number
+            # 4. Generate Invoice Number
             invoice_number = await self._get_next_invoice_number()
 
-            # 6. Create the Invoice Document
             invoice = Invoice(
                 invoice_number=invoice_number,
                 invoice_date=datetime.now(UTC),
@@ -132,11 +113,12 @@ class InvoiceRepo:
                 # Snapshots
                 client_details=client_snapshot,
                 vehicle_details=vehicle_snapshot,
-                items=invoice_items,
-                # Calculated Totals (Convert back to Decimal128)
-                total_without_iva=Decimal128(total_without_iva),
-                total_iva=Decimal128(total_iva),
-                total_with_iva=Decimal128(total_with_iva),
+                items=invoice_items,  # MAKE SURE THIS IS POPULATED CORRECTLY (see note below)
+                # --- FIX IS HERE ---
+                # Retrieve totals from the fetched work_order object, NOT invoice_data
+                total_without_iva=work_order.final_total_price_without_iva,
+                total_iva=work_order.final_total_iva,
+                total_with_iva=work_order.final_total_price_with_iva,
             )
 
             await invoice.insert()
@@ -176,7 +158,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error retrieving invoice: {e}")
-            raise
+            raise InvoiceNotFoundError(f"Invoice ID {invoice_id}") from e
 
     @handle_repo_errors("get_invoices_by_client_id")
     async def get_invoices_by_client_id(self, client_id: ObjectId) -> list[Invoice]:
@@ -199,7 +181,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
-            raise
+            raise InvoiceNotFoundError(f"Client ID {client_id}") from e
 
     @handle_repo_errors("get_invoices_by_work_order_id")
     async def get_invoices_by_work_order_id(self, work_order_id: ObjectId) -> list[Invoice]:
@@ -222,7 +204,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
-            raise
+            raise InvoiceNotFoundError(f"Work Order ID {work_order_id}") from e
 
     @handle_repo_errors("update_invoice")
     async def update_invoice(self, invoice_id: ObjectId, invoice_data: InvoiceUpdate) -> Invoice | None:
@@ -257,7 +239,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error updating invoice: {e}")
-            raise
+            raise InvoiceDatabaseError("update invoice", str(e)) from e
 
     @handle_repo_errors("delete_invoice")
     async def delete_invoice(self, invoice_id: ObjectId) -> bool:
@@ -287,4 +269,4 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error deleting invoice: {e}")
-            raise
+            raise InvoiceDatabaseError("delete invoice", str(e)) from e
