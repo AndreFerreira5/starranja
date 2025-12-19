@@ -5,7 +5,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.dependencies import get_current_user_id, get_work_order_repo
-from src.exceptions.work_orders import WorkOrderNotFoundError
+from src.exceptions.work_orders import ActiveWorkOrderExistsError, WorkOrderNotFoundError
 from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderStatus, WorkOrderUpdate
 from src.repository.work_orders import WorkOrderRepo
 
@@ -19,8 +19,14 @@ async def create_work_order(
     created_by_id: Annotated[UUID, Depends(get_current_user_id)],
 ):
     """Create a new Work Order."""
-    # created_by_id is injected automatically by our dependency
-    return await repo.create_work_order(order_data, created_by_id)
+    try:
+        # created_by_id is injected automatically by our dependency
+        return await repo.create_work_order(order_data, created_by_id)
+    except ActiveWorkOrderExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "active_work_order_exists", "message": str(e), "vehicle_id": e.vehicle_id},
+        )
 
 
 @router.get("/{work_order_id}", response_model=WorkOrder)

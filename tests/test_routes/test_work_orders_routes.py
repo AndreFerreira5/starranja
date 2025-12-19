@@ -157,7 +157,9 @@ async def test_create_work_order_active_exists(client, sample_work_order):
 
     # Assert
     assert response.status_code == status.HTTP_409_CONFLICT
-    assert response.json()["error"] == "active_work_order_exists"
+    error_data = response.json()["detail"]
+    assert error_data["error"] == "active_work_order_exists"
+    assert error_data["vehicle_id"] == str(sample_work_order.vehicle_id)
 
 
 async def test_get_work_order_by_id_success(client, sample_work_order):
