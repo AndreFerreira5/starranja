@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.dependencies import get_current_user_id, get_work_order_repo
 from src.exceptions.work_orders import WorkOrderNotFoundError
-from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderUpdate
+from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderStatus, WorkOrderUpdate
 from src.repository.work_orders import WorkOrderRepo
 
 router = APIRouter(prefix="/work-orders", tags=["Work Orders"])
@@ -40,16 +40,17 @@ async def list_work_orders(
     work_order_number: str | None = None,
     vehicle_id: str | None = None,
     client_id: str | None = None,
+    status: WorkOrderStatus | None = None,
     active_only: bool = False,
 ):
-    # 1. Search by Unique Number
+    # Search by Unique Number
     if work_order_number:
         wo = await repo.get_by_work_order_number(work_order_number)
         if not wo:
             raise WorkOrderNotFoundError(work_order_number)
         return wo
 
-    # 2. Filter by Vehicle
+    # Filter by Vehicle
     if vehicle_id:
         if not ObjectId.is_valid(vehicle_id):
             raise HTTPException(status_code=400, detail="Invalid Vehicle ID")
@@ -58,11 +59,15 @@ async def list_work_orders(
             return [wo] if wo else []
         return await repo.get_by_vehicle_id(ObjectId(vehicle_id))
 
-    # 3. Filter by Client
+    # Filter by Client
     if client_id:
         if not ObjectId.is_valid(client_id):
             raise HTTPException(status_code=400, detail="Invalid Client ID")
         return await repo.get_by_client_id(ObjectId(client_id))
+
+    # Filter by Status
+    if status:
+        return await repo.get_by_status(status)
 
     return []
 

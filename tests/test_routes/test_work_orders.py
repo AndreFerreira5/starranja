@@ -268,3 +268,39 @@ async def test_update_work_order_calculates_totals(client, sample_work_order):
     # Depending on your backend logic, check if it calculated the grand total
     # If your backend logic for 'finalTotalPriceWithIVA' exists, assert it here:
     assert data["finalTotalPriceWithIVA"] == "307.50"
+
+
+async def test_assign_mechanic_to_work_order(client, sample_work_order):
+    """Test assigning a mechanic (UUID) to a work order."""
+    wo_id = str(sample_work_order.id)
+    mechanic_id = str(uuid4())
+
+    payload = {"mechanicsIds": [mechanic_id]}
+
+    response = await client.patch(f"/work-orders/{wo_id}", json=payload)
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert mechanic_id in data["mechanicsIds"]
+
+    # Verify in DB
+    db_wo = await WorkOrder.get(sample_work_order.id)
+    assert UUID(mechanic_id) in db_wo.mechanics_ids
+
+
+async def test_list_work_orders_by_status(client, sample_work_order):
+    """Test filtering work orders by status."""
+    # Verify our sample is 'AwaitingDiagnostic'
+    assert sample_work_order.status == WorkOrderStatus.AWAITING_DIAGNOSTIC
+
+    # Search for 'AwaitingDiagnostic' status
+    response = await client.get("/work-orders/?status=AwaitingDiagnostic")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert len(data) >= 1
+    assert data[0]["_id"] == str(sample_work_order.id)
+
+    # Search for a different status (should return empty)
+    response_empty = await client.get("/work-orders/?status=Completed")
+    assert response_empty.status_code == status.HTTP_200_OK
+    assert len(response_empty.json()) == 0
