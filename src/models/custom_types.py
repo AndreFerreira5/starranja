@@ -1,6 +1,7 @@
 from typing import Annotated, Any
 
-from bson import Decimal128, ObjectId
+from bson import ObjectId
+from bson.decimal128 import Decimal128
 from pydantic import BeforeValidator, PlainSerializer, WithJsonSchema
 
 
