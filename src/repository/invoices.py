@@ -9,7 +9,6 @@ from pymongo.errors import DuplicateKeyError
 from src.exceptions.invoices import (
     ClientAddressMissingError,
     InvoiceDatabaseError,
-    InvoiceNotFoundError,
     InvoiceNumberConflictError,
 )
 from src.models.client import Client
@@ -240,7 +239,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error updating invoice: {e}")
-            raise InvoiceDatabaseError("update invoice", str(e)) from 
+            raise InvoiceDatabaseError("update invoice", str(e)) from e
 
     @handle_repo_errors("delete_invoice")
     async def delete_invoice(self, invoice_id: ObjectId) -> bool:
