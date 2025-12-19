@@ -1,29 +1,28 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException
 
-# --- IMPORT FROM AUTH TEAM ---
+# Import from the Auth Team
 from src.authentication.decorators import token_required
+
+# Import the CENTRAL get_database from connection.py
+from src.db.connection import get_mongo_db
 from src.repository.work_orders import WorkOrderRepo
 
-
-def get_database(request: Request):
-    """Retrieve the MongoDB database from app state."""
-    return getattr(request.app.state, "db", None)
+# --- REMOVE the local get_database(request: Request) function entirely ---
 
 
-def get_work_order_repo(db=Depends(get_database)) -> WorkOrderRepo:
+def get_work_order_repo(
+    # Now this Depends matches the one we are overriding in the test
+    db=Depends(get_mongo_db),
+) -> WorkOrderRepo:
     """Dependency to provide WorkOrderRepo."""
     return WorkOrderRepo(db)
 
 
-def get_current_user_id(
-    # We use the Auth Team's existing dependency here
-    payload: dict = Depends(token_required()),
-) -> UUID:
+def get_current_user_id(payload: dict = Depends(token_required())) -> UUID:
     """
-    Uses the Auth team's 'token_required' to validate the user,
-    then converts the string ID to a UUID object for our Repo.
+    Uses the Auth team's 'token_required' to validate the user.
     """
     try:
         user_id_str = payload.get("user_id")

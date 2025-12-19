@@ -5,11 +5,18 @@ from uuid import UUID, uuid4
 import pytest
 from bson import ObjectId
 from fastapi import status
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
-from src.dependencies import get_current_user_id, get_database
+from src.dependencies import get_current_user_id
 from src.main import app
-from src.models.work_orders import Quote, WorkOrder, WorkOrderStatus
+from src.models.client import Client
+from src.models.vehicle import Vehicle
+from src.models.work_orders import (
+    Quote,
+    WorkOrder,
+    WorkOrderStatus,
+)
+from src.repository.work_orders import WorkOrderRepo
 
 # Mark all tests as asyncio
 pytestmark = pytest.mark.asyncio
@@ -19,40 +26,77 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def client(init_db):
+async def client(init_db):
     """
-    Integration Test Client.
-    - Uses REAL MongoDB (via init_db fixture).
-    - Mocks Auth (via dependency override).
-    - Mocks Postgres (via patch).
+    Integration Test Client using AsyncClient.
+    Runs in the SAME event loop as the DB fixture.
     """
-    # Bypass Auth: Return a fake User ID
+    # 1. Bypass Auth
     app.dependency_overrides[get_current_user_id] = lambda: UUID("00000000-0000-0000-0000-000000000000")
 
-    # Inject Test Database: Ensure Repo gets the test DB connection
-    # 'init_db' fixture typically returns the AsyncIOMotorClient or DB object
-    # Adjust '.db' or return value based on the actual conftest.py structure
-    app.dependency_overrides[get_database] = lambda: init_db
+    # 2. Inject Test DB
+    from src.db.connection import get_mongo_db
 
-    # Patch Startup: Prevent main.py from connecting to real Postgres/Mongo
+    app.dependency_overrides[get_mongo_db] = lambda: init_db
+
+    # 3. Nuclear Patch (Class Methods) - Keeps main.py safe
     with (
-        patch("src.main.auth_db_connect", new_callable=AsyncMock),
-        patch("src.main.auth_db_disconnect", new_callable=AsyncMock),
+        patch("src.db.connection.PostgreSQLDatabase.connect", new_callable=AsyncMock),
+        patch("src.db.connection.PostgreSQLDatabase.disconnect", new_callable=AsyncMock),
+        patch("src.db.connection.MongoDatabase.connect", new_callable=AsyncMock),
+        patch("src.db.connection.MongoDatabase.disconnect", new_callable=AsyncMock),
     ):
-        with TestClient(app) as c:
+        # 4. Use AsyncClient instead of TestClient
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
 
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(scope="function")
+async def work_order_repo(init_db):
+    """Fixture to provide a clean WorkOrderRepo instance for each test."""
+    return WorkOrderRepo(init_db)  # init_db provides the db connection
+
+
+@pytest.fixture(scope="function")
+async def sample_client(init_db):
+    """Fixture to create a sample client in the test DB."""
+    client = Client(
+        name="Test Client",
+        nif="123456789",
+        phone="912345678",
+        # ... other required Client fields
+    )
+    await client.save()
+    return client
+
+
+@pytest.fixture(scope="function")
+async def sample_vehicle(init_db, sample_client):
+    """Fixture to create a sample vehicle linked to the sample client."""
+    vehicle = Vehicle(
+        client_id=sample_client.id,
+        license_plate="AA-00-BB",
+        brand="Test",
+        model="Model",
+        kilometers=1000,
+        vin="1234567890ABCDEFG",
+        # ... other required Vehicle fields
+    )
+    await vehicle.save()
+    return vehicle
+
+
 @pytest.fixture
-async def sample_work_order(init_db):
+async def sample_work_order(init_db, sample_client, sample_vehicle):
     """Creates a real WorkOrder in the test database."""
     wo = WorkOrder(
         id=ObjectId(),
         work_order_number="2025-0001",
-        client_id=ObjectId(),
-        vehicle_id=ObjectId(),
+        client_id=sample_client.id,
+        vehicle_id=sample_vehicle.id,
         created_by_id=uuid4(),
         status=WorkOrderStatus.AWAITING_DIAGNOSTIC,
         is_active=True,
@@ -79,7 +123,10 @@ async def test_create_work_order_success(client):
     }
 
     # Act
-    response = client.post("/work-orders/", json=payload)
+    response = await client.post("/work-orders/", json=payload)
+
+    if response.status_code == 422:
+        print(response.json())
 
     # Assert API
     assert response.status_code == status.HTTP_201_CREATED
@@ -90,7 +137,8 @@ async def test_create_work_order_success(client):
     # Assert Database (The REAL proof)
     db_wo = await WorkOrder.get(ObjectId(new_id))
     assert db_wo is not None
-    assert db_wo.client_observations == "Noise in engine"
+    assert db_wo.quote is not None
+    assert db_wo.quote.client_observations == "Noise in engine"
 
 
 async def test_create_work_order_active_exists(client, sample_work_order):
@@ -105,7 +153,7 @@ async def test_create_work_order_active_exists(client, sample_work_order):
     }
 
     # Act
-    response = client.post("/work-orders/", json=payload)
+    response = await client.post("/work-orders/", json=payload)
 
     # Assert
     assert response.status_code == status.HTTP_409_CONFLICT
@@ -116,7 +164,7 @@ async def test_get_work_order_by_id_success(client, sample_work_order):
     """Test retrieving a real WO by ID."""
     wo_id = str(sample_work_order.id)
 
-    response = client.get(f"/work-orders/{wo_id}")
+    response = await client.get(f"/work-orders/{wo_id}")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["_id"] == wo_id
@@ -125,7 +173,7 @@ async def test_get_work_order_by_id_success(client, sample_work_order):
 async def test_get_work_order_not_found(client):
     """Test 404 for missing ID in real DB."""
     wo_id = str(ObjectId())  # Random ID
-    response = client.get(f"/work-orders/{wo_id}")
+    response = await client.get(f"/work-orders/{wo_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -133,7 +181,7 @@ async def test_list_work_orders_by_vehicle(client, sample_work_order):
     """Test filtering by vehicle ID."""
     v_id = str(sample_work_order.vehicle_id)
 
-    response = client.get(f"/work-orders/?vehicle_id={v_id}")
+    response = await client.get(f"/work-orders/?vehicle_id={v_id}")
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -148,7 +196,7 @@ async def test_update_work_order_status(client, sample_work_order):
     payload = {"status": "InProgress"}
 
     # Act
-    response = client.patch(f"/work-orders/{wo_id}", json=payload)
+    response = await client.patch(f"/work-orders/{wo_id}", json=payload)
 
     # Assert API
     assert response.status_code == status.HTTP_200_OK
@@ -164,7 +212,7 @@ async def test_delete_work_order_success(client, sample_work_order):
     wo_id = str(sample_work_order.id)
 
     # Act
-    response = client.delete(f"/work-orders/{wo_id}")
+    response = await client.delete(f"/work-orders/{wo_id}")
 
     # Assert API
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -172,3 +220,51 @@ async def test_delete_work_order_success(client, sample_work_order):
     # Assert Database
     db_wo = await WorkOrder.get(sample_work_order.id)
     assert db_wo is None
+
+
+async def test_update_work_order_calculates_totals(client, sample_work_order):
+    """Test that adding items correctly updates the calculated total fields."""
+    wo_id = str(sample_work_order.id)
+
+    # Payload with 1 Part and 1 Labor item
+    # Part: 100.00 * 2 = 200.00 (excl VAT)
+    # Labor: 50.00 * 1 = 50.00 (excl VAT)
+    # Total Excl VAT = 250.00
+    # VAT (23%) = 57.50
+    # Total Incl VAT = 307.50
+    payload = {
+        "items": [
+            {
+                "type": "Part",
+                "description": "Brake Discs",
+                "reference": "BD-01",
+                "quantity": "2",
+                "unitPriceWithoutIVA": "100.00",
+                "ivaRate": "0.23",
+                "totalPriceWithIVA": "246.00",  # Frontend usually estimates this
+            },
+            {
+                "type": "Labor",
+                "description": "Installation",
+                "reference": "L-01",
+                "quantity": "1",
+                "unitPriceWithoutIVA": "50.00",
+                "ivaRate": "0.23",
+                "totalPriceWithIVA": "61.50",
+            },
+        ]
+    }
+
+    # Act
+    response = await client.patch(f"/work-orders/{wo_id}", json=payload)
+
+    # Assert
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    # Check that the backend performed the summation correctly
+    # Note: Compare as strings to verify precision
+    assert data["finalTotalPriceWithoutIVA"] == "250.00"  # (100*2) + (50*1)
+    # Depending on your backend logic, check if it calculated the grand total
+    # If your backend logic for 'finalTotalPriceWithIVA' exists, assert it here:
+    assert data["finalTotalPriceWithIVA"] == "307.50"
