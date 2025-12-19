@@ -154,11 +154,12 @@ class InvoiceRepo:
 
             else:
                 logger.info("No invoice found with the given ID")
+
             return invoice
 
         except Exception as e:
             logger.error(f"Error retrieving invoice: {e}")
-            raise InvoiceNotFoundError(f"Invoice ID {invoice_id}") from e
+            raise InvoiceDatabaseError("get invoice by id", str(e)) from e
 
     @handle_repo_errors("get_invoices_by_client_id")
     async def get_invoices_by_client_id(self, client_id: ObjectId) -> list[Invoice]:
@@ -181,7 +182,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
-            raise InvoiceNotFoundError(f"Client ID {client_id}") from e
+            raise InvoiceDatabaseError("get_invoices_by_client_id", str(e)) from e
 
     @handle_repo_errors("get_invoices_by_work_order_id")
     async def get_invoices_by_work_order_id(self, work_order_id: ObjectId) -> list[Invoice]:
@@ -204,7 +205,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error retrieving invoices: {e}")
-            raise InvoiceNotFoundError(f"Work Order ID {work_order_id}") from e
+            raise InvoiceDatabaseError("get_invoices_by_work_order_id", str(e)) from e
 
     @handle_repo_errors("update_invoice")
     async def update_invoice(self, invoice_id: ObjectId, invoice_data: InvoiceUpdate) -> Invoice | None:
@@ -239,7 +240,7 @@ class InvoiceRepo:
 
         except Exception as e:
             logger.error(f"Error updating invoice: {e}")
-            raise InvoiceDatabaseError("update invoice", str(e)) from e
+            raise InvoiceDatabaseError("update invoice", str(e)) from 
 
     @handle_repo_errors("delete_invoice")
     async def delete_invoice(self, invoice_id: ObjectId) -> bool:
