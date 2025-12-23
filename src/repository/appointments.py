@@ -5,6 +5,7 @@ from fastapi import HTTPException
 
 from src.models.appointments import Appointment, AppointmentCreate, AppointmentUpdate
 from src.models.client import Client
+from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +15,7 @@ class AppointmentRepo:
         self.db = db
         self.collection = "appointments"
 
+    @handle_repo_errors("create_appointment")
     async def create_appointment(self, appointment_data: AppointmentCreate) -> Appointment:
         """
         Create a new appointment.
@@ -49,6 +51,7 @@ class AppointmentRepo:
             logger.error(f"Error creating appointment: {e}")
             raise
 
+    @handle_repo_errors("get_appointment_by_id")
     async def get_appointment_by_id(self, appointment_id: ObjectId) -> Appointment | None:
         """
         Retrieve an appointment by its ID.
@@ -75,6 +78,7 @@ class AppointmentRepo:
             logger.error(f"Error retrieving appointment: {e}")
             raise
 
+    @handle_repo_errors("get_appointments_by_client_id")
     async def get_appointments_by_client_id(self, client_id: ObjectId) -> list[Appointment] | None:
         """
         Retrieve appointments by client ID.
@@ -104,6 +108,7 @@ class AppointmentRepo:
             logger.error(f"Error retrieving appointments: {e}")
             raise
 
+    @handle_repo_errors("get_appointments_by_vehicle_id")
     async def get_appointments_by_vehicle_id(self, vehicle_id: ObjectId) -> list[Appointment] | None:
         """
         Retrieve appointments by vehicle ID.
@@ -133,6 +138,7 @@ class AppointmentRepo:
             logger.error(f"Error retrieving appointments: {e}")
             raise
 
+    @handle_repo_errors("update_appointment")
     async def update_appointment(self, appointment_id: ObjectId, update_data: AppointmentUpdate) -> Appointment | None:
         """
         Update an existing appointment.
@@ -167,6 +173,7 @@ class AppointmentRepo:
             logger.error(f"Error updating appointment: {e}")
             raise
 
+    @handle_repo_errors("delete_appointment")
     async def delete_appointment(self, appointment_id: ObjectId) -> bool:
         """
         Delete an appointment by its ID.
