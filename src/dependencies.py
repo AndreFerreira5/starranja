@@ -8,6 +8,7 @@ from src.authentication.decorators import token_required
 # Import the CENTRAL get_database from connection.py
 from src.db.connection import get_mongo_db
 from src.repository.work_orders import WorkOrderRepo
+from src.repository.appointments import AppointmentRepo
 
 # --- REMOVE the local get_database(request: Request) function entirely ---
 
@@ -22,9 +23,9 @@ def get_work_order_repo(
 
 def get_appointments_repo(
     db=Depends(get_mongo_db),
-) -> WorkOrderRepo:
+) -> AppointmentRepo:
     """Dependency to provide AppointmentsRepo."""
-    return WorkOrderRepo(db)
+    return AppointmentRepo(db)
 
 
 def get_current_user_id(payload: dict = Depends(token_required())) -> UUID:

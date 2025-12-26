@@ -63,7 +63,7 @@ async def sample_client(init_db):
         name="Test Client",
         nif="123456789",
         phone="912345678",
-        # ... other required Client fields
+        email="test@client.com",
     )
     await client.save()
     return client
@@ -79,7 +79,6 @@ async def sample_vehicle(init_db, sample_client):
         model="Model",
         kilometers=1000,
         vin="1234567890ABCDEFG",
-        # ... other required Vehicle fields
     )
     await vehicle.save()
     return vehicle
@@ -101,13 +100,15 @@ async def sample_appointment(init_db, sample_client, sample_vehicle):
 # --- Integration Tests ---
 
 
-async def test_create_appointment_success(client):
+async def test_create_appointment_success(client, sample_client):
     """Test that creating a appointment persists it to the real DB."""
     payload = {
-        "clientId": str(ObjectId()),
-        "vehicleId": str(ObjectId()),
-        "clientObservations": "Noise in engine",
-        "entryDate": datetime.now(UTC).isoformat(),
+        # FIX: Use the ID of the client that actually exists in the DB
+        "clientId": str(sample_client.id),
+        # FIX: Match the AppointmentCreate model field names (alias)
+        "notes": "Noise in engine",
+        "appointmentDate": datetime.now(UTC).isoformat(),
+        # Note: vehicleId is NOT in AppointmentCreate schema, so we omit it
     }
 
     # Act
@@ -120,28 +121,30 @@ async def test_create_appointment_success(client):
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["clientId"] == payload["clientId"]
-    assert data["vehicleId"] == payload["vehicleId"]
-    assert data["clientObservations"] == payload["clientObservations"]
-
+    new_id = data["_id"]
+    # Assert Database
+    db_appointment = await Appointment.get(ObjectId(new_id))
+    assert db_appointment is not None
+    assert db_appointment.quote is not None
+    assert db_appointment.quote.client_observations == "Noise in engine"
 
 async def test_create_appointment_failed(client):
     """Test that creating a appointment with invalid data fails."""
     payload = {
         "clientId": "invalid-object-id",  # Invalid ObjectId
-        "vehicleId": str(ObjectId()),
-        "clientObservations": "Noise in engine",
-        "entryDate": datetime.now(UTC).isoformat(),
+        "appointmentDate": datetime.now(UTC).isoformat(),
     }
 
     # Act
     response = await client.post("/appointments/", json=payload)
 
     # Assert API
+    # Should return 422 Unprocessable Entity because validation happens before Repo check
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
 async def test_get_appointment_by_id_success(client, sample_appointment):
-    """Test retrieving a real WO by ID."""
+    """Test retrieving a real Appointment by ID."""
     appointment_id = str(sample_appointment.id)
 
     response = await client.get(f"/appointments/{appointment_id}")
@@ -178,6 +181,7 @@ async def test_update_appointment_status(client, sample_appointment):
 
     # Act
     response = await client.patch(f"/appointments/{appointment_id}", json=payload)
+
     # Assert API
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["status"] == "Completed"
@@ -189,10 +193,10 @@ async def test_update_appointment_status(client, sample_appointment):
 
 async def test_delete_appointment_success(client, sample_appointment):
     """Test deleting removes item from DB."""
-    wo_id = str(sample_appointment.id)
+    apointment_id = str(sample_appointment.id)
 
     # Act
-    response = await client.delete(f"/appointments/{wo_id}")
+    response = await client.delete(f"/appointments/{apointment_id}")
 
     # Assert API
     assert response.status_code == status.HTTP_204_NO_CONTENT

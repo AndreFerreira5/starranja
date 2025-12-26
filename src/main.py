@@ -30,7 +30,7 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-from src.routes import auth, users
+from src.routes import appointments, auth, users
 
 # configure logging globally
 configure_logging()
@@ -60,6 +60,7 @@ app = FastAPI(
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(appointments.router)
 
 
 @app.get("/ping")
