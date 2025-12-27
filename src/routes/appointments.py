@@ -12,6 +12,7 @@ router = APIRouter(
     tags=["appointments"],
 )
 
+
 @router.post("/", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED)
 async def create_appointment(
     appointment_data: AppointmentCreate,
@@ -25,10 +26,11 @@ async def create_appointment(
         # It's good practice to log the error here
         raise HTTPException(status_code=500, detail=str(e))
 
+
 # FIX: Removed "| None" because 404 is handled by exception
 @router.get("/{appointment_id}", response_model=AppointmentOut)
 async def get_appointment(
-    appointment_id: str, # Changed from ObjectId to str to let Pydantic/FastAPI handle the path param parsing
+    appointment_id: str,  # Changed from ObjectId to str to let Pydantic/FastAPI handle the path param parsing
     repo: Annotated[AppointmentRepo, Depends(get_appointments_repo)],
 ) -> Appointment:
     """Retrieve an appointment by its ID."""
@@ -43,6 +45,7 @@ async def get_appointment(
 
     return appointment
 
+
 # FIX: Removed "| None" because an empty result is [] (a list), not None
 @router.get("/", response_model=list[AppointmentOut])
 async def list_appointments(
@@ -55,9 +58,9 @@ async def list_appointments(
     if vehicle_id:
         if not ObjectId.is_valid(vehicle_id):
             raise HTTPException(status_code=400, detail="Invalid vehicle ID format")
-            
+
         appointments = await repo.get_appointments_by_vehicle_id(ObjectId(vehicle_id))
-        
+
         # If strict 404 is desired for empty filters:
         if not appointments:
             raise HTTPException(status_code=404, detail="No appointments found for the given vehicle ID")
@@ -77,6 +80,7 @@ async def list_appointments(
 
     return []
 
+
 @router.patch("/{appointment_id}", response_model=AppointmentOut)
 async def update_appointment(
     appointment_id: str,
@@ -94,6 +98,7 @@ async def update_appointment(
         raise HTTPException(status_code=404, detail="Appointment not found")
 
     return appointment
+
 
 @router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_appointment(

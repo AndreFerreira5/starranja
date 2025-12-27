@@ -7,8 +7,8 @@ from src.authentication.decorators import token_required
 
 # Import the CENTRAL get_database from connection.py
 from src.db.connection import get_mongo_db
-from src.repository.work_orders import WorkOrderRepo
 from src.repository.appointments import AppointmentRepo
+from src.repository.work_orders import WorkOrderRepo
 
 # --- REMOVE the local get_database(request: Request) function entirely ---
 

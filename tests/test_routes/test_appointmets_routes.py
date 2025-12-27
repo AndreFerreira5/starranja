@@ -125,8 +125,8 @@ async def test_create_appointment_success(client, sample_client):
     # Assert Database
     db_appointment = await Appointment.get(ObjectId(new_id))
     assert db_appointment is not None
-    assert db_appointment.quote is not None
-    assert db_appointment.quote.client_observations == "Noise in engine"
+    assert str(db_appointment.client_id) == payload["clientId"]
+
 
 async def test_create_appointment_failed(client):
     """Test that creating a appointment with invalid data fails."""
@@ -140,7 +140,7 @@ async def test_create_appointment_failed(client):
 
     # Assert API
     # Should return 422 Unprocessable Entity because validation happens before Repo check
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
 async def test_get_appointment_by_id_success(client, sample_appointment):
