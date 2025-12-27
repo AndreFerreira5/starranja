@@ -46,7 +46,7 @@ class InvoiceRepo:
                 return_document=ReturnDocument.AFTER,
             )
             seq = counter_doc["seq"]
-            return f"{seq:04d}"
+            return f"FT {datetime.now(UTC).year}/{seq}"
 
         except Exception as e:
             logger.error(f"Error generating invoice number: {e}")
@@ -84,12 +84,11 @@ class InvoiceRepo:
             # Fallback if address is missing but required by InvoiceAddress model
             if not client_address:
                 raise ClientAddressMissingError(str(client.id))
-
-            else:
-                # Assuming client.address matches InvoiceAddress structure or mapping is needed
-                addr_snapshot = InvoiceAddress(
-                    street=client_address.street, city=client_address.city, zipCode=client_address.zip_code
-                )
+            
+            # Assuming client.address matches InvoiceAddress structure or mapping is needed
+            addr_snapshot = InvoiceAddress(
+                street=client_address.street, city=client_address.city, zipCode=client_address.zip_code
+            )
 
             client_snapshot = InvoiceClientDetails(name=client.name, nif=client.nif, address=addr_snapshot)
 
