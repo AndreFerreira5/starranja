@@ -84,7 +84,7 @@ class InvoiceRepo:
             # Fallback if address is missing but required by InvoiceAddress model
             if not client_address:
                 raise ClientAddressMissingError(str(client.id))
-            
+
             # Assuming client.address matches InvoiceAddress structure or mapping is needed
             addr_snapshot = InvoiceAddress(
                 street=client_address.street, city=client_address.city, zipCode=client_address.zip_code
