@@ -40,6 +40,7 @@ from src.models.appointments import Appointment
 from src.models.auth import Base
 from src.models.client import Client
 from src.models.invoices import Invoice
+from src.models.supplier_order import SupplierOrder
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
 
@@ -327,7 +328,7 @@ async def init_db():
     await client.drop_database(db_name)
 
     # 5. Initialize Beanie with all your document models
-    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice, Appointment])
+    await init_beanie(database=db, document_models=[Client, Vehicle, WorkOrder, Invoice, Appointment, SupplierOrder])
 
     try:
         # 6. Yield the database for the test to use
