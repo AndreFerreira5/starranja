@@ -1,8 +1,9 @@
 from datetime import datetime
 from enum import Enum
+from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
@@ -40,6 +41,14 @@ class UserResponse(BaseModel):
     email: EmailStr | None = None
     full_name: str
     created_at: datetime
+    role: UserRole | None = Field(default=None, validation_alias="roles")  # TODO later enforce this?
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def get_primary_role(cls, v: Any) -> str | None:
+        if not v:
+            return None
+        return v[0].name
 
 
 class UserUpdate(BaseModel):
