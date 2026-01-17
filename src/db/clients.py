@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -34,6 +36,13 @@ async def get_roles_by_user_id(db: AsyncSession, user_id: str) -> list[Role]:
     if user:
         return list(user.roles)
     return []
+
+
+async def get_all_users(
+    db: AsyncSession,
+) -> Sequence[User]:
+    result = await db.scalars(select(User).options(selectinload(User.roles)))
+    return result.all()
 
 
 # ========== ROLE FUNCTIONS ==========
