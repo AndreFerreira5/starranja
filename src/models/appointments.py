@@ -68,6 +68,7 @@ class AppointmentUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
+
 class AppointmentOut(BaseModel):
     """Full Appointment schema for API responses."""
 
