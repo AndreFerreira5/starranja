@@ -3,6 +3,7 @@ import logging
 from bson import ObjectId
 
 from src.models.vehicle import Vehicle, VehicleCreate, VehicleUpdate
+from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ class VehicleRepo:
         self.db = db
         self.collection = "vehicles"
 
+    @handle_repo_errors("create_vehicle")
     async def create_vehicle(self, vehicle_data: VehicleCreate) -> Vehicle:
         """
         Create a new vehicle.
@@ -28,6 +30,7 @@ class VehicleRepo:
 
         raise NotImplementedError("create_vehicle method not yet implemented")
 
+    @handle_repo_errors("get_vehicle_by_id")
     async def get_by_id(self, vehicle_id: ObjectId) -> Vehicle | None:
         """
         Retrieve a vehicle by its ID.
@@ -42,6 +45,7 @@ class VehicleRepo:
 
         raise NotImplementedError("get_by_id method not yet implemented")
 
+    @handle_repo_errors("get_vehicle_by_license_plate")
     async def get_by_license_plate(self, license_plate: str) -> Vehicle | None:
         """
         Retrieve a vehicle by its license plate.
@@ -56,6 +60,7 @@ class VehicleRepo:
 
         raise NotImplementedError("get_by_license_plate method not yet implemented")
 
+    @handle_repo_errors("get_vehicles_by_client_id")
     async def get_by_client_id(self, client_id: ObjectId) -> list[Vehicle]:
         """
         Retrieve all vehicles belonging to a specific client.
@@ -70,6 +75,7 @@ class VehicleRepo:
 
         raise NotImplementedError("get_by_client_id method not yet implemented")
 
+    @handle_repo_errors("update_vehicle")
     async def update(self, vehicle_id: ObjectId, update_data: VehicleUpdate) -> Vehicle | None:
         """
         Update an existing vehicle.
@@ -85,6 +91,7 @@ class VehicleRepo:
 
         raise NotImplementedError("update method not yet implemented")
 
+    @handle_repo_errors("delete_vehicle")
     async def delete(self, vehicle_id: ObjectId) -> bool:
         """
         Delete a vehicle from the database.
