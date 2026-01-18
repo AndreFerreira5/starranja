@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from src.db.connection import auth_db_connect, auth_db_disconnect
+from src.db.connection import auth_db_connect, auth_db_disconnect, mongo_db_connect, mongo_db_disconnect
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
@@ -36,7 +36,7 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-from src.routes import auth, users
+from src.routes import auth, users, work_orders
 
 # configure logging globally
 configure_logging()
@@ -46,8 +46,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await auth_db_connect()
+    await mongo_db_connect()
     yield
     await auth_db_disconnect()
+    await mongo_db_disconnect()
 
 
 app = FastAPI(
@@ -68,6 +70,7 @@ app = FastAPI(
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
+app.include_router(work_orders.router)
 
 
 @app.get("/ping")

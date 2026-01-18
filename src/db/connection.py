@@ -78,3 +78,40 @@ async def get_auth_session():
         except Exception:
             await session.rollback()
             raise
+
+
+class MongoDatabase:
+    def __init__(self):
+        self._client = None
+        self._database = None
+
+    async def connect(self):
+        # ...
+        pass
+
+    async def disconnect(self):
+        # ...
+        pass
+
+    @property
+    def database(self):
+        return self._database
+
+
+# Singleton Instance
+mongo_db = MongoDatabase()
+
+
+async def mongo_db_connect():
+    """Wrapper to connect to MongoDB (calls the class method)."""
+    await mongo_db.connect()
+
+
+async def mongo_db_disconnect():
+    """Wrapper to disconnect from MongoDB."""
+    await mongo_db.disconnect()
+
+
+def get_mongo_db():
+    """Dependency to retrieve the MongoDB database object."""
+    return mongo_db.database
