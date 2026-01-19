@@ -151,9 +151,6 @@ async def test_create_invoice_success(invoice_repo, sample_client, sample_work_o
         work_order_id=sample_work_order.id,
     )
 
-    # Since the repository implementation wasn't provided in the prompt context,
-    # this call relies on your Repo correctly implementing the snapshot logic.
-    # If the repo isn't implemented yet, this will fail with NotImplementedError (as expected).
     new_invoice = await invoice_repo.create_invoice(create_data)
 
     assert new_invoice is not None

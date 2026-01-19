@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Annotated
 from uuid import UUID
 
 from beanie import Document, Indexed
-from bson import ObjectId
-from bson.decimal128 import Decimal128
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
+
+from src.models.custom_types import PyDecimal128, PyObjectId
 
 # Importing the WorkOrderItem from work_orders.py
 # This is crucial for the "snapshot" of items
@@ -22,10 +22,10 @@ else:
             type: str
             description: str
             reference: str
-            quantity: Decimal128
-            unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
-            iva_rate: Decimal128
-            total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
+            quantity: PyDecimal128
+            unit_price_without_iva: PyDecimal128 = Field(..., alias="unitPriceWithoutIVA")
+            iva_rate: PyDecimal128
+            total_price_with_iva: PyDecimal128 = Field(..., alias="totalPriceWithIVA")
             model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
 
@@ -82,8 +82,8 @@ class Invoice(Document):
     status: Annotated[InvoiceStatus, Indexed()] = Field(default=InvoiceStatus.EMITTED)
 
     # --- References ---
-    work_order_id: Annotated[ObjectId, Indexed()] = Field(..., alias="workOrderId")
-    client_id: Annotated[ObjectId, Indexed()] = Field(..., alias="clientId")
+    work_order_id: Annotated[PyObjectId, Indexed()] = Field(..., alias="workOrderId")
+    client_id: Annotated[PyObjectId, Indexed()] = Field(..., alias="clientId")
     emitted_by_id: UUID = Field(..., alias="emittedById")  # User (PostgreSQL) UUID
 
     # --- Snapshot Data ---
@@ -92,9 +92,9 @@ class Invoice(Document):
     items: list[WorkOrderItem] = Field(...)  # Full copy of items from WorkOrder
 
     # --- Snapshot Totals ---
-    total_without_iva: Decimal128 = Field(..., alias="totalWithoutIVA")
-    total_iva: Decimal128 = Field(..., alias="totalIVA")
-    total_with_iva: Decimal128 = Field(..., alias="totalWithIVA")
+    total_without_iva: PyDecimal128 = Field(..., alias="totalWithoutIVA")
+    total_iva: PyDecimal128 = Field(..., alias="totalIVA")
+    total_with_iva: PyDecimal128 = Field(..., alias="totalWithIVA")
 
     # --- Timestamps ---
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), alias="createdAt")
@@ -102,7 +102,7 @@ class Invoice(Document):
 
     model_config = ConfigDict(
         populate_by_name=True,
-        arbitrary_types_allowed=True,  # Required for Decimal128
+        arbitrary_types_allowed=True,  # Required for PyDecimal128
     )
 
     class Settings:
@@ -129,7 +129,7 @@ class InvoiceCreate(BaseModel):
     verify RB01, and perform the snapshot.
     """
 
-    work_order_id: ObjectId = Field(..., alias="workOrderId")
+    work_order_id: PyObjectId = Field(..., alias="workOrderId")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
@@ -148,7 +148,7 @@ class InvoiceUpdate(BaseModel):
 class InvoiceOut(BaseModel):
     """Full Invoice schema for API responses."""
 
-    id: str = Field(..., alias="_id")  # ObjectId serialized to string
+    id: str = Field(..., alias="_id")  # PyObjectId serialized to string
     invoice_number: str = Field(..., alias="invoiceNumber")
     invoice_date: datetime = Field(..., alias="invoiceDate")
     status: InvoiceStatus
@@ -161,9 +161,9 @@ class InvoiceOut(BaseModel):
     vehicle_details: InvoiceVehicleDetails = Field(..., alias="vehicleDetails")
     items: list[WorkOrderItem]
 
-    total_without_iva: Decimal128 = Field(..., alias="totalWithoutIVA")
-    total_iva: Decimal128 = Field(..., alias="totalIVA")
-    total_with_iva: Decimal128 = Field(..., alias="totalWithIVA")
+    total_without_iva: PyDecimal128 = Field(..., alias="totalWithoutIVA")
+    total_iva: PyDecimal128 = Field(..., alias="totalIVA")
+    total_with_iva: PyDecimal128 = Field(..., alias="totalWithIVA")
 
     created_at: datetime = Field(..., alias="createdAt")
     updated_at: datetime = Field(..., alias="updatedAt")
@@ -171,5 +171,5 @@ class InvoiceOut(BaseModel):
     model_config = ConfigDict(
         populate_by_name=True,
         from_attributes=True,  # Allows Beanie doc to be mapped to this schema
-        arbitrary_types_allowed=True,  # For Decimal128
+        arbitrary_types_allowed=True,  # For PyDecimal128
     )
