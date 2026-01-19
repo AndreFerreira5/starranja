@@ -26,18 +26,13 @@ class VehicleRepo:
         Raises:
             Exception: If the license plate already exists (unique constraint violation)
         """
-        logger.info(f"Creating vehicle with license plate {vehicle_data.license_plate}")
+        logger.debug(f"Creating vehicle with license plate {vehicle_data.license_plate}")
 
-        try:
-            vehicle = Vehicle(**vehicle_data.model_dump())
+        vehicle = Vehicle(**vehicle_data.model_dump())
 
-            await vehicle.insert()
+        await vehicle.insert()
 
-            return vehicle
-
-        except Exception as e:
-            logger.error(f"Error creating vehicle: {e}")
-            raise
+        return vehicle
 
     @handle_repo_errors("get_vehicle_by_id")
     async def get_by_id(self, vehicle_id: ObjectId) -> Vehicle | None:
@@ -50,14 +45,9 @@ class VehicleRepo:
         Returns:
             Vehicle document if found, None otherwise
         """
-        logger.info(f"Retrieving vehicle by ID: {vehicle_id}")
+        logger.debug(f"Retrieving vehicle by ID: {vehicle_id}")
 
-        try:
-            return await Vehicle.get(vehicle_id)
-
-        except Exception as e:
-            logger.error(f"Error retrieving vehicle: {e}")
-            raise
+        return await Vehicle.get(vehicle_id)
 
     @handle_repo_errors("get_vehicle_by_license_plate")
     async def get_by_license_plate(self, license_plate: str) -> Vehicle | None:
@@ -70,13 +60,9 @@ class VehicleRepo:
         Returns:
             Vehicle document if found, None otherwise
         """
-        logger.info(f"Retrieving vehicle by license plate: {license_plate}")
+        logger.debug(f"Retrieving vehicle by license plate: {license_plate}")
 
-        try:
-            return await Vehicle.find_one(Vehicle.license_plate == license_plate)
-        except Exception as e:
-            logger.error(f"Error retrieving vehicle: {e}")
-            raise
+        return await Vehicle.find_one(Vehicle.license_plate == license_plate)
 
     @handle_repo_errors("get_vehicles_by_client_id")
     async def get_by_client_id(self, client_id: ObjectId) -> list[Vehicle]:
@@ -89,13 +75,9 @@ class VehicleRepo:
         Returns:
             List of vehicle documents (empty list if none found)
         """
-        logger.info(f"Retrieving vehicles for client: {client_id}")
+        logger.debug(f"Retrieving vehicles for client: {client_id}")
 
-        try:
-            return await Vehicle.find(Vehicle.client_id == client_id).to_list()
-        except Exception as e:
-            logger.error(f"Error retrieving vehicles: {e}")
-            raise
+        return await Vehicle.find(Vehicle.client_id == client_id).to_list()
 
     @handle_repo_errors("update_vehicle")
     async def update(self, vehicle_id: ObjectId, update_data: VehicleUpdate) -> Vehicle | None:
@@ -109,25 +91,19 @@ class VehicleRepo:
         Returns:
             Updated vehicle document if found, None otherwise
         """
-        logger.info(f"Updating vehicle: {vehicle_id}")
+        logger.debug(f"Updating vehicle: {vehicle_id}")
 
-        try:
-            vehicle = await Vehicle.get(vehicle_id)
-            if not vehicle:
-                return None
+        vehicle = await Vehicle.get(vehicle_id)
+        if not vehicle:
+            return None
 
-            update_dict = update_data.model_dump(by_alias=True, exclude_unset=True)
+        update_dict = update_data.model_dump(by_alias=True, exclude_unset=True)
 
-            if update_dict:
-                await vehicle.set(update_dict)
-                # Trigger save hook to update `updatedAt` field
-                await vehicle.save()
+        await vehicle.set(update_dict)
+        # Trigger save hook to update `updatedAt` field
+        await vehicle.save()
 
-            return vehicle
-
-        except Exception as e:
-            logger.error(f"Error updating vehicle: {e}")
-            raise
+        return vehicle
 
     @handle_repo_errors("delete_vehicle")
     async def delete(self, vehicle_id: ObjectId) -> bool:
@@ -144,16 +120,12 @@ class VehicleRepo:
             Consider implementing soft delete or checking for active work orders
             before allowing deletion (business rule validation)
         """
-        logger.info(f"Deleting vehicle: {vehicle_id}")
+        logger.debug(f"Deleting vehicle: {vehicle_id}")
 
-        try:
-            vehicle = await Vehicle.get(vehicle_id)
-            if not vehicle:
-                return False
+        vehicle = await Vehicle.get(vehicle_id)
 
-            await vehicle.delete()
-            return True
+        if not vehicle:
+            return False
 
-        except Exception as e:
-            logger.error(f"Error deleting vehicle: {e}")
-            raise
+        await vehicle.delete()
+        return True
