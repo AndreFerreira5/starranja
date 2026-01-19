@@ -30,8 +30,11 @@ class VehicleRepo:
 
         try:
             vehicle = Vehicle(**vehicle_data.model_dump())
+
             await vehicle.insert()
+
             return vehicle
+
         except Exception as e:
             logger.error(f"Error creating vehicle: {e}")
             raise
@@ -51,6 +54,7 @@ class VehicleRepo:
 
         try:
             return await Vehicle.get(vehicle_id)
+
         except Exception as e:
             logger.error(f"Error retrieving vehicle: {e}")
             raise
