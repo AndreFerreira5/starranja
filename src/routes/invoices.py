@@ -4,6 +4,7 @@ from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.dependencies import get_invoices_repo
+from src.exceptions.invoices import ClientAddressMissingError
 from src.models.invoices import Invoice, InvoiceCreate, InvoiceUpdate
 from src.repository.invoices import InvoiceRepo
 
@@ -18,10 +19,17 @@ async def create_invoice(
     """Create a new Invoice."""
     try:
         return await repo.create_invoice(invoice_data)
-    except Exception as e:
+
+    except HTTPException as e:
+        # Re-raise HTTPExceptions (like the 404 for missing Work Order/Client)
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"error": "invoice_creation_failed", "message": str(e)},
+            status_code=status.HTTP_404_NOT_FOUND, detail={"error": "work_order_not_found", "message": str(e.detail)}
+        )
+
+    except ClientAddressMissingError as e:
+        # Return 409 Conflict if address snapshot cannot be created
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail={"error": "missing_client_address", "message": str(e)}
         )
 
 
