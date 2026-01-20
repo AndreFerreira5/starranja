@@ -128,10 +128,12 @@ async def test_create_appointment_success(client, sample_client):
     assert str(db_appointment.client_id) == payload["clientId"]
 
 
-async def test_create_appointment_failed(client):
+async def test_create_appointment_client_not_found(client):
     """Test that creating a appointment with invalid data fails."""
+    non_existing_id = str(ObjectId())
+
     payload = {
-        "clientId": "invalid-object-id",  # Invalid ObjectId
+        "clientId": non_existing_id,  # Invalid ObjectId
         "appointmentDate": datetime.now(UTC).isoformat(),
     }
 
@@ -139,8 +141,7 @@ async def test_create_appointment_failed(client):
     response = await client.post("/appointments/", json=payload)
 
     # Assert API
-    # Should return 422 Unprocessable Entity because validation happens before Repo check
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 async def test_get_appointment_by_id_success(client, sample_appointment):
@@ -153,7 +154,7 @@ async def test_get_appointment_by_id_success(client, sample_appointment):
     assert response.json()["_id"] == appointment_id
 
 
-async def test_get_appointment_not_found(client):
+async def test_get_appointment_by_id_not_found(client):
     """Test 404 for missing ID in real DB."""
     appointment_id = str(ObjectId())  # Random ID
     response = await client.get(f"/appointments/{appointment_id}")
@@ -161,7 +162,7 @@ async def test_get_appointment_not_found(client):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
-async def test_list_appointments_by_vehicle(client, sample_appointment):
+async def test_list_appointments_by_vehicle_success(client, sample_appointment):
     """Test filtering by vehicle ID."""
     v_id = str(sample_appointment.vehicle_id)
 
@@ -172,6 +173,15 @@ async def test_list_appointments_by_vehicle(client, sample_appointment):
     assert isinstance(data, list)
     assert len(data) == 1
     assert data[0]["_id"] == str(sample_appointment.id)
+
+
+async def test_list_appointments_by_vehicle_not_found(client):
+    """Test 404 when no appointments for given vehicle ID."""
+    v_id = str(ObjectId())  # Random vehicle ID
+
+    response = await client.get(f"/appointments/?vehicle_id={v_id}")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 async def test_update_appointment_status(client, sample_appointment):
@@ -191,6 +201,18 @@ async def test_update_appointment_status(client, sample_appointment):
     assert db_appointment.status == "Completed"
 
 
+async def test_update_appointment_not_found(client):
+    """Test updating a non-existent appointment returns 404."""
+    appointment_id = str(ObjectId())
+    payload = {"status": "Completed"}
+
+    # Act
+    response = await client.patch(f"/appointments/{appointment_id}", json=payload)
+
+    # Assert API
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
 async def test_delete_appointment_success(client, sample_appointment):
     """Test deleting removes item from DB."""
     apointment_id = str(sample_appointment.id)
@@ -204,3 +226,14 @@ async def test_delete_appointment_success(client, sample_appointment):
     # Assert Database
     db_appointment = await Appointment.get(sample_appointment.id)
     assert db_appointment is None
+
+
+async def test_delete_appointment_not_found(client):
+    """Test deleting a non-existent appointment returns 404."""
+    appointment_id = str(ObjectId())
+
+    # Act
+    response = await client.delete(f"/appointments/{appointment_id}")
+
+    # Assert API
+    assert response.status_code == status.HTTP_404_NOT_FOUND

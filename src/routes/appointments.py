@@ -24,7 +24,7 @@ async def create_appointment(
         return appointment
     except Exception as e:
         # It's good practice to log the error here
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 # FIX: Removed "| None" because 404 is handled by exception
