@@ -35,6 +35,8 @@ def get_appointments_repo(
 ) -> AppointmentRepo:
     """Dependency to provide AppointmentsRepo."""
     return AppointmentRepo(db)
+
+
 def get_client_repo(
     db=Depends(get_mongo_db),
 ) -> ClientRepo:
