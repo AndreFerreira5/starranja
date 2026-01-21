@@ -13,7 +13,7 @@ from src.exceptions.clients import (
 from src.models.client import Client, ClientCreate, ClientUpdate
 from src.repository.client import ClientRepo
 
-router = APIRouter(prefix="/clients", tags=["Clients"])
+router = APIRouter()
 
 
 @router.post("/", response_model=Client, status_code=status.HTTP_201_CREATED)
