@@ -93,8 +93,8 @@ app = FastAPI(
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(work_orders.router)
-app.include_router(invoices.router)
+app.include_router(work_orders.router, prefix="/work-orders", tags=["Work Orders"])
+app.include_router(invoices.router, prefix="/invoices", tags=["Invoices"])
 app.include_router(clients.router)
 
 

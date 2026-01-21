@@ -8,7 +8,7 @@ from src.exceptions.invoices import ClientAddressMissingError
 from src.models.invoices import Invoice, InvoiceCreate, InvoiceUpdate
 from src.repository.invoices import InvoiceRepo
 
-router = APIRouter(prefix="/invoices", tags=["Invoices"])
+router = APIRouter()
 
 
 @router.post("/", response_model=Invoice, status_code=status.HTTP_201_CREATED)

@@ -9,7 +9,7 @@ from src.exceptions.work_orders import ActiveWorkOrderExistsError, WorkOrderNotF
 from src.models.work_orders import WorkOrder, WorkOrderCreate, WorkOrderStatus, WorkOrderUpdate
 from src.repository.work_orders import WorkOrderRepo
 
-router = APIRouter(prefix="/work-orders", tags=["Work Orders"])
+router = APIRouter()
 
 
 @router.post("/", response_model=WorkOrder, status_code=status.HTTP_201_CREATED)
