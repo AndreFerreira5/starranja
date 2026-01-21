@@ -3,6 +3,7 @@ import logging
 from bson import ObjectId
 
 from src.models.vehicle import Vehicle, VehicleCreate, VehicleUpdate
+from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ class VehicleRepo:
         self.db = db
         self.collection = "vehicles"
 
+    @handle_repo_errors("create_vehicle")
     async def create_vehicle(self, vehicle_data: VehicleCreate) -> Vehicle:
         """
         Create a new vehicle.
@@ -24,10 +26,15 @@ class VehicleRepo:
         Raises:
             Exception: If the license plate already exists (unique constraint violation)
         """
-        logger.info(f"Creating vehicle with license plate {vehicle_data.license_plate}")
+        logger.debug(f"Creating vehicle with license plate {vehicle_data.license_plate}")
 
-        raise NotImplementedError("create_vehicle method not yet implemented")
+        vehicle = Vehicle(**vehicle_data.model_dump())
 
+        await vehicle.insert()
+
+        return vehicle
+
+    @handle_repo_errors("get_vehicle_by_id")
     async def get_by_id(self, vehicle_id: ObjectId) -> Vehicle | None:
         """
         Retrieve a vehicle by its ID.
@@ -38,10 +45,11 @@ class VehicleRepo:
         Returns:
             Vehicle document if found, None otherwise
         """
-        logger.info(f"Retrieving vehicle by ID: {vehicle_id}")
+        logger.debug(f"Retrieving vehicle by ID: {vehicle_id}")
 
-        raise NotImplementedError("get_by_id method not yet implemented")
+        return await Vehicle.get(vehicle_id)
 
+    @handle_repo_errors("get_vehicle_by_license_plate")
     async def get_by_license_plate(self, license_plate: str) -> Vehicle | None:
         """
         Retrieve a vehicle by its license plate.
@@ -52,10 +60,11 @@ class VehicleRepo:
         Returns:
             Vehicle document if found, None otherwise
         """
-        logger.info(f"Retrieving vehicle by license plate: {license_plate}")
+        logger.debug(f"Retrieving vehicle by license plate: {license_plate}")
 
-        raise NotImplementedError("get_by_license_plate method not yet implemented")
+        return await Vehicle.find_one(Vehicle.license_plate == license_plate)
 
+    @handle_repo_errors("get_vehicles_by_client_id")
     async def get_by_client_id(self, client_id: ObjectId) -> list[Vehicle]:
         """
         Retrieve all vehicles belonging to a specific client.
@@ -66,10 +75,11 @@ class VehicleRepo:
         Returns:
             List of vehicle documents (empty list if none found)
         """
-        logger.info(f"Retrieving vehicles for client: {client_id}")
+        logger.debug(f"Retrieving vehicles for client: {client_id}")
 
-        raise NotImplementedError("get_by_client_id method not yet implemented")
+        return await Vehicle.find(Vehicle.client_id == client_id).to_list()
 
+    @handle_repo_errors("update_vehicle")
     async def update(self, vehicle_id: ObjectId, update_data: VehicleUpdate) -> Vehicle | None:
         """
         Update an existing vehicle.
@@ -81,10 +91,21 @@ class VehicleRepo:
         Returns:
             Updated vehicle document if found, None otherwise
         """
-        logger.info(f"Updating vehicle: {vehicle_id}")
+        logger.debug(f"Updating vehicle: {vehicle_id}")
 
-        raise NotImplementedError("update method not yet implemented")
+        vehicle = await Vehicle.get(vehicle_id)
+        if not vehicle:
+            return None
 
+        update_dict = update_data.model_dump(by_alias=True, exclude_unset=True)
+
+        await vehicle.set(update_dict)
+        # Trigger save hook to update `updatedAt` field
+        await vehicle.save()
+
+        return vehicle
+
+    @handle_repo_errors("delete_vehicle")
     async def delete(self, vehicle_id: ObjectId) -> bool:
         """
         Delete a vehicle from the database.
@@ -99,6 +120,12 @@ class VehicleRepo:
             Consider implementing soft delete or checking for active work orders
             before allowing deletion (business rule validation)
         """
-        logger.info(f"Deleting vehicle: {vehicle_id}")
+        logger.debug(f"Deleting vehicle: {vehicle_id}")
 
-        raise NotImplementedError("delete method not yet implemented")
+        vehicle = await Vehicle.get(vehicle_id)
+
+        if not vehicle:
+            return False
+
+        await vehicle.delete()
+        return True

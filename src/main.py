@@ -37,13 +37,14 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
+
 from src.models.appointments import Appointment
 from src.models.client import Client
 from src.models.invoices import Invoice
 from src.models.supplier_order import SupplierOrder
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
-from src.routes import auth, invoices, users, work_orders
+from src.routes import auth, clients, users, work_orders, invoices
 
 # configure logging globally
 configure_logging()
@@ -94,6 +95,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(work_orders.router)
 app.include_router(invoices.router)
+app.include_router(clients.router)
 
 
 @app.get("/ping")
