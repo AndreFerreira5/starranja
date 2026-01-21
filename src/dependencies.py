@@ -7,6 +7,7 @@ from src.authentication.decorators import token_required
 
 # Import the CENTRAL get_database from connection.py
 from src.db.connection import get_mongo_db
+from src.repository.client import ClientRepo
 from src.repository.invoices import InvoiceRepo
 from src.repository.work_orders import WorkOrderRepo
 
@@ -26,6 +27,13 @@ def get_work_order_repo(
 ) -> WorkOrderRepo:
     """Dependency to provide WorkOrderRepo."""
     return WorkOrderRepo(db)
+
+
+def get_client_repo(
+    db=Depends(get_mongo_db),
+) -> ClientRepo:
+    """Dependency to provide ClientRepo."""
+    return ClientRepo(db)
 
 
 def get_current_user_id(payload: dict = Depends(token_required())) -> UUID:

@@ -179,23 +179,32 @@ async def sample_invoice(init_db, sample_client, sample_work_order, sample_vehic
 
 async def test_create_invoice_success(client, sample_work_order):
     """Test creating an invoice successfully."""
-    payload = {
-        "workOrderId": str(sample_work_order.id),
-    }
+    payload = {"workOrderId": str(sample_work_order.id)}
 
     response = await client.post("/invoices/", json=payload)
     assert response.status_code == status.HTTP_201_CREATED
     assert "_id" in response.json()
 
 
-async def test_create_invoice_failed(client):
-    """Test creating an invoice with invalid data."""
-    payload = {
-        # Missing required field 'workOrderId'
-    }
+async def test_create_invoice_work_order_not_found(client):
+    """Test creating an invoice with a non-existent work order."""
+    non_existent_wo_id = str(ObjectId())
+    payload = {"workOrderId": non_existent_wo_id}
 
     response = await client.post("/invoices/", json=payload)
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+async def test_create_invoice_missing_address(client, sample_work_order, sample_client):
+    """Test creating an invoice when the client address is missing."""
+    # Remove address from sample client
+    sample_client.address = None
+    await sample_client.save()
+
+    payload = {"workOrderId": str(sample_work_order.id)}
+
+    response = await client.post("/invoices/", json=payload)
+    assert response.status_code == status.HTTP_409_CONFLICT
 
 
 async def test_get_invoice_by_id_success(client, sample_invoice):
