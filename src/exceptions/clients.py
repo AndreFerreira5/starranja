@@ -48,3 +48,12 @@ class InvalidClientDataError(ClientError):
     def __init__(self, field: str, message: str):
         self.field = field
         super().__init__(f"Invalid {field}: {message}")
+
+
+class ClientHasActiveWorkOrdersError(ClientError):
+    """Raised when attempting to delete a client that has active work orders."""
+
+    def __init__(self, client_id: str, count: int):
+        self.client_id = client_id
+        self.count = count
+        super().__init__(f"Cannot delete client {client_id}: Client has {count} active work orders.")

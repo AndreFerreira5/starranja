@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from src.dependencies import get_client_repo
 from src.exceptions.clients import (
     ClientDatabaseError,
+    ClientHasActiveWorkOrdersError,
     ClientNotFoundError,
     DuplicateClientEmailError,
     DuplicateClientNIFError,
@@ -154,6 +155,16 @@ async def delete_client(
         if not success:
             raise ClientNotFoundError(client_id)
         return None
+    except ClientHasActiveWorkOrdersError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "active_work_orders_conflict",
+                "message": str(e),
+                "count": e.count,
+                "clientId": e.client_id,
+            },
+        )
     except ClientNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -6,11 +6,13 @@ from pymongo.errors import DuplicateKeyError
 
 from src.exceptions.clients import (
     ClientDatabaseError,
+    ClientHasActiveWorkOrdersError,
     ClientNotFoundError,
     DuplicateClientEmailError,
     DuplicateClientNIFError,
 )
 from src.models.client import Client, ClientCreate, ClientUpdate
+from src.models.work_orders import WorkOrder
 
 logger = logging.getLogger(__name__)
 
@@ -290,6 +292,7 @@ class ClientRepo:
         Raises:
             ClientNotFoundError: If client is not found
             ClientDatabaseError: If an unexpected database error occurs
+            ClientHasActiveWorkOrdersError: If client has active work orders (RB02)
 
         Note:
             Consider implementing soft delete or checking for active work orders
@@ -305,13 +308,24 @@ class ClientRepo:
             if not client:
                 raise ClientNotFoundError(str(client_id))
 
+            active_work_orders_count = await WorkOrder.find(
+                WorkOrder.client_id == client.id,
+                WorkOrder.is_active == True,  # noqa: E712
+            ).count()
+
+            if active_work_orders_count > 0:
+                logger.warning(
+                    f"Deletion blocked: Client {client_id} has {active_work_orders_count} active work orders."
+                )
+                raise ClientHasActiveWorkOrdersError(str(client_id), active_work_orders_count)
+
             # Delete the client
             await client.delete()
 
             logger.info(f"Successfully deleted client: {client_id}")
             return True
 
-        except ClientNotFoundError:
+        except (ClientNotFoundError, ClientHasActiveWorkOrdersError):
             raise
         except Exception as e:
             logger.error(f"Error deleting client: {str(e)}", exc_info=True)
