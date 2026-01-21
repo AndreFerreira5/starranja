@@ -151,9 +151,6 @@ async def test_create_invoice_success(invoice_repo, sample_client, sample_work_o
         work_order_id=sample_work_order.id,
     )
 
-    # Since the repository implementation wasn't provided in the prompt context,
-    # this call relies on your Repo correctly implementing the snapshot logic.
-    # If the repo isn't implemented yet, this will fail with NotImplementedError (as expected).
     new_invoice = await invoice_repo.create_invoice(create_data)
 
     assert new_invoice is not None
@@ -230,6 +227,52 @@ async def test_get_invoices_by_work_order_id_not_found(invoice_repo):
     found_invoices = await invoice_repo.get_invoices_by_work_order_id(non_existent_work_order_id)
 
     assert not found_invoices
+
+
+async def test_get_all_invoices_success(invoice_repo, sample_invoice):
+    """Test retrieving all invoices from the database."""
+
+    # 1. Create a second invoice
+    second_invoice = Invoice(
+        invoice_number="FT 2025/2",
+        invoice_date=datetime.now(UTC),
+        status=InvoiceStatus.PAID,
+        work_order_id=ObjectId(),  # Different work order
+        client_id=sample_invoice.client_id,  # Same client
+        emitted_by_id=uuid4(),
+        client_details=sample_invoice.client_details,
+        vehicle_details=sample_invoice.vehicle_details,
+        items=sample_invoice.items,
+        total_without_iva=sample_invoice.total_without_iva,
+        total_iva=sample_invoice.total_iva,
+        total_with_iva=sample_invoice.total_with_iva,
+    )
+    await second_invoice.save()
+
+    # 2. Act: Call the repository method
+    all_invoices = await invoice_repo.get_all_invoices()
+
+    # 3. Assert
+    assert all_invoices is not None
+    assert isinstance(all_invoices, list)
+    assert len(all_invoices) >= 2
+
+    # Verify both invoices are present
+    invoice_ids = [invoice.id for invoice in all_invoices]
+    assert sample_invoice.id in invoice_ids
+    assert second_invoice.id in invoice_ids
+
+
+async def test_get_all_invoices_empty(invoice_repo):
+    """Test retrieving all invoices when the collection is empty."""
+    # The init_db fixture should provide a clean DB per test
+    # If there are no invoices created, this should return empty list
+
+    all_invoices = await invoice_repo.get_all_invoices()
+
+    assert all_invoices is not None
+    assert isinstance(all_invoices, list)
+    assert len(all_invoices) == 0
 
 
 async def test_update_invoice_success(invoice_repo, sample_invoice):

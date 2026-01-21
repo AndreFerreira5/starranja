@@ -131,6 +131,25 @@ class InvoiceRepo:
 
             raise InvoiceDatabaseError("create invoice", str(e)) from e
 
+    @handle_repo_errors("get_all_invoices")
+    async def get_all_invoices(self) -> list[Invoice]:
+        """
+        Retrieve all invoices from the database.
+
+        Returns:
+            List of all Invoice documents
+        """
+        logger.info("Retrieving all invoices")
+        try:
+            # Use Beanie find_all()
+            invoices = await Invoice.find_all().to_list()
+            logger.info(f"Found {len(invoices)} total invoices")
+            return invoices
+
+        except Exception as e:
+            logger.error(f"Error retrieving all invoices: {e}")
+            raise InvoiceDatabaseError("get_all_invoices", str(e)) from e
+
     @handle_repo_errors("get_invoice_by_id")
     async def get_invoice_by_id(self, invoice_id: ObjectId) -> Invoice | None:
         """

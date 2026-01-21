@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
+from motor.motor_asyncio import AsyncIOMotorClient
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -86,12 +87,28 @@ class MongoDatabase:
         self._database = None
 
     async def connect(self):
-        # ...
-        pass
+        if self._client is None:
+            try:
+                logger.info("Connecting to MongoDB...")
+                self._client = AsyncIOMotorClient(settings.database.MONGO_DATABASE_URL, serverSelectionTimeoutMS=5000)
+
+                await self._client.server_info()
+
+                db_name = getattr(settings.database, "MONGO_DB_NAME", "starranja")
+                self._database = self._client[db_name]
+
+                logger.info(f"Successfully connected to MongoDB: {db_name}")
+
+            except Exception as e:
+                logger.error(f"Failed to connect to MongoDB: {e}")
+                raise
 
     async def disconnect(self):
-        # ...
-        pass
+        if self._client:
+            self._client.close()
+            self._client = None
+            self._database = None
+            logger.info("MongoDB connection closed")
 
     @property
     def database(self):
