@@ -138,6 +138,25 @@ class AppointmentRepo:
             logger.error(f"Error retrieving appointments: {e}")
             raise
 
+    @handle_repo_errors("get_all")
+    async def get_all(self) -> list[Appointment]:
+        """
+        Retrieve all appointments from the database.
+
+        Returns:
+            List of all Appointment documents
+        """
+        logger.info("Retrieving all appointments")
+        try:
+            # Use Beanie find_all() to get every document in the collection
+            appointments = await Appointment.find_all().to_list()
+            logger.info(f"Found {len(appointments)} total appointments")
+            return appointments
+
+        except Exception as e:
+            logger.error(f"Error retrieving all appointments: {e}")
+            raise
+
     @handle_repo_errors("update_appointment")
     async def update_appointment(self, appointment_id: ObjectId, update_data: AppointmentUpdate) -> Appointment | None:
         """
