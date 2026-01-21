@@ -7,10 +7,7 @@ from src.dependencies import get_appointments_repo
 from src.models.appointments import Appointment, AppointmentCreate, AppointmentOut, AppointmentUpdate
 from src.repository.appointments import AppointmentRepo
 
-router = APIRouter(
-    prefix="/appointments",
-    tags=["appointments"],
-)
+router = APIRouter()
 
 
 @router.post("/", response_model=AppointmentOut, status_code=status.HTTP_201_CREATED)
@@ -27,7 +24,6 @@ async def create_appointment(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-# FIX: Removed "| None" because 404 is handled by exception
 @router.get("/{appointment_id}", response_model=AppointmentOut)
 async def get_appointment(
     appointment_id: str,  # Changed from ObjectId to str to let Pydantic/FastAPI handle the path param parsing
@@ -46,7 +42,6 @@ async def get_appointment(
     return appointment
 
 
-# FIX: Removed "| None" because an empty result is [] (a list), not None
 @router.get("/", response_model=list[AppointmentOut])
 async def list_appointments(
     repo: Annotated[AppointmentRepo, Depends(get_appointments_repo)],
@@ -78,7 +73,7 @@ async def list_appointments(
 
         return appointments
 
-    return []
+    return await repo.get_all()
 
 
 @router.patch("/{appointment_id}", response_model=AppointmentOut)

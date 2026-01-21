@@ -184,6 +184,51 @@ async def test_list_appointments_by_vehicle_not_found(client):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+async def test_get_all_appointments_success(client, sample_appointment):
+    """Test retrieving all appointments when no filter is provided."""
+
+    # 1. Create a SECOND appointment
+    second_appointment = Appointment(
+        client_id=sample_appointment.client_id,
+        vehicle_id=sample_appointment.vehicle_id,
+        appointment_date=datetime.now(UTC),
+        status=AppointmentStatus.COMPLETED,
+    )
+    await second_appointment.save()
+
+    # 2. Act: Call the endpoint with NO query parameters
+    response = await client.get("/appointments/")
+
+    # 3. Assert
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert isinstance(data, list)
+    assert len(data) >= 2
+
+    # Verify IDs are present
+    returned_ids = [item["_id"] for item in data]
+    assert str(sample_appointment.id) in returned_ids
+    assert str(second_appointment.id) in returned_ids
+
+
+async def test_get_all_appointments_empty(client):
+    """Test retrieving all appointments when DB is empty."""
+    # Note: This relies on the DB being clean.
+    # If other tests run before this without cleanup, it might fail.
+    # The 'client' fixture usually resets the DB, but be aware of scope.
+
+    # Force delete all for this specific test to be sure
+    await Appointment.find_all().delete()
+
+    response = await client.get("/appointments/")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
 async def test_update_appointment_status(client, sample_appointment):
     """Test updating status persists to DB."""
     appointment_id = str(sample_appointment.id)

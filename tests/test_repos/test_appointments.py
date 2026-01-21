@@ -152,6 +152,47 @@ async def test_get_appointments_by_vehicle_id_failed(appointment_repo):
     assert found_appointments is None
 
 
+async def test_get_all_success(appointment_repo, sample_appointment):
+    """Test retrieving all appointments from the database."""
+
+    # 1. Create a second appointment
+    second_appointment = Appointment(
+        client_id=sample_appointment.client_id,
+        vehicle_id=sample_appointment.vehicle_id,
+        appointment_date=datetime.now(UTC),
+        status=AppointmentStatus.COMPLETED,
+    )
+    await second_appointment.save()
+
+    # 2. Act: Call the repository method
+    all_appointments = await appointment_repo.get_all()
+
+    # 3. Assert
+    assert all_appointments is not None
+    assert isinstance(all_appointments, list)
+    assert len(all_appointments) >= 2  # At least our two test appointments
+
+    # Verify IDs match
+    ids = [a.id for a in all_appointments]
+    assert sample_appointment.id in ids
+    assert second_appointment.id in ids
+
+
+async def test_get_all_empty(appointment_repo):
+    """Test retrieving all appointments when the collection is empty."""
+
+    # Ensure DB is empty for this test
+    await Appointment.find_all().delete()
+
+    # Act
+    all_appointments = await appointment_repo.get_all()
+
+    # Assert
+    assert all_appointments is not None
+    assert isinstance(all_appointments, list)
+    assert len(all_appointments) == 0
+
+
 async def test_update_appointment_success(appointment_repo, sample_appointment):
     update_data = AppointmentUpdate(
         id=sample_appointment.id,
