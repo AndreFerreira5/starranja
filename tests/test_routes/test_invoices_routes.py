@@ -254,6 +254,46 @@ async def test_get_invoices_by_work_order_id_failed(client):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+async def test_get_all_invoices_no_filter(client, sample_invoice):
+    """Test retrieving all invoices when no filters are applied."""
+
+    # 1. Create a SECOND invoice
+    # Reuse sample_invoice's dependencies for simplicity,
+    # but create a new invoice document
+    second_invoice = Invoice(
+        invoice_number="FT 2025/2",
+        invoice_date=datetime.now(UTC),
+        status=InvoiceStatus.PAID,
+        work_order_id=ObjectId(),  # Random IDs for distinctness
+        client_id=sample_invoice.client_id,
+        emitted_by_id=sample_invoice.emitted_by_id,
+        client_details=sample_invoice.client_details,
+        vehicle_details=sample_invoice.vehicle_details,
+        items=sample_invoice.items,
+        total_without_iva=sample_invoice.total_without_iva,
+        total_iva=sample_invoice.total_iva,
+        total_with_iva=sample_invoice.total_with_iva,
+    )
+    await second_invoice.save()
+
+    # 2. Act: Call the endpoint with NO query params
+    response = await client.get("/invoices/")
+
+    # 3. Assert
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    # Should be a list
+    assert isinstance(data, list)
+    # Should contain at least our 2 invoices
+    assert len(data) >= 2
+
+    # Verify IDs are present
+    returned_ids = [item["_id"] for item in data]
+    assert str(sample_invoice.id) in returned_ids
+    assert str(second_invoice.id) in returned_ids
+
+
 async def test_update_invoice_success(client, sample_invoice):
     """Test updating an invoice successfully."""
     invoice_id = str(sample_invoice.id)

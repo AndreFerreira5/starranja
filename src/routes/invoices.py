@@ -60,7 +60,8 @@ async def list_invoices(
             raise HTTPException(status_code=404, detail="No invoices found for this work order")
         return results
 
-    return []
+    # No filters, returns all invoices
+    return await repo.get_all_invoices()
 
 
 @router.patch("/{invoice_id}", response_model=Invoice)
