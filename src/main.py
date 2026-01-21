@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from src.db.connection import auth_db_connect, auth_db_disconnect
+from src.db.connection import auth_db_connect, auth_db_disconnect, mongo_db_connect, mongo_db_disconnect
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
@@ -19,9 +19,15 @@ from src.exceptions.handlers import (
     duplicate_client_email_handler,
     duplicate_client_nif_handler,
     invalid_client_data_handler,
+    supplier_order_database_error_handler,
+    supplier_order_not_found_handler,
     work_order_database_error_handler,
     work_order_not_found_handler,
     work_order_number_conflict_handler,
+)
+from src.exceptions.supplier_order import (
+    SupplierOrderDatabaseError,
+    SupplierOrderNotFoundError,
 )
 from src.exceptions.work_orders import (
     ActiveWorkOrderExistsError,
@@ -30,7 +36,7 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-from src.routes import appointments, auth, users
+from src.routes import auth, clients, users, work_orders, appointments
 
 # configure logging globally
 configure_logging()
@@ -40,8 +46,10 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await auth_db_connect()
+    await mongo_db_connect()
     yield
     await auth_db_disconnect()
+    await mongo_db_disconnect()
 
 
 app = FastAPI(
@@ -56,11 +64,15 @@ app = FastAPI(
         DuplicateClientEmailError: duplicate_client_email_handler,
         InvalidClientDataError: invalid_client_data_handler,
         ClientDatabaseError: client_database_error_handler,
+        SupplierOrderDatabaseError: supplier_order_database_error_handler,
+        SupplierOrderNotFoundError: supplier_order_not_found_handler,
     },
 )
 app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(appointments.router)
+app.include_router(work_orders.router)
+app.include_router(clients.router)
 
 
 @app.get("/ping")

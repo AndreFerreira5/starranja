@@ -1,13 +1,15 @@
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from enum import Enum
 from typing import Annotated
 from uuid import UUID
 
 from beanie import Document, Indexed
-from bson import ObjectId
 from bson.decimal128 import Decimal128
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import IndexModel
+
+from src.models.custom_types import PyDecimal128, PyObjectId
 
 
 # --- Enums ---
@@ -51,10 +53,10 @@ class WorkOrderItem(BaseModel):
     type: WorkOrderItemType
     description: str
     reference: str
-    quantity: Decimal128
-    unit_price_without_iva: Decimal128 = Field(..., alias="unitPriceWithoutIVA")
-    iva_rate: Decimal128 = Field(..., alias="ivaRate")
-    total_price_with_iva: Decimal128 = Field(..., alias="totalPriceWithIVA")
+    quantity: PyDecimal128
+    unit_price_without_iva: PyDecimal128 = Field(..., alias="unitPriceWithoutIVA")
+    iva_rate: PyDecimal128 = Field(..., alias="ivaRate")
+    total_price_with_iva: PyDecimal128 = Field(..., alias="totalPriceWithIVA")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
@@ -81,8 +83,8 @@ class WorkOrderItem(BaseModel):
 class WorkOrder(Document):
     # --- References & Core IDs ---
     work_order_number: Annotated[str, Indexed(unique=True)] = Field(..., alias="workOrderNumber")
-    client_id: Annotated[ObjectId, Indexed()] = Field(..., alias="clientId")
-    vehicle_id: ObjectId = Field(..., alias="vehicleId")  # Indexed via partial index
+    client_id: Annotated[PyObjectId, Indexed()] = Field(..., alias="clientId")
+    vehicle_id: PyObjectId = Field(..., alias="vehicleId")  # Indexed via partial index
     created_by_id: UUID = Field(..., alias="createdById")  # User (PostgreSQL) who created the WO - UUID
     mechanics_ids: list[UUID] | None = Field(default=[], alias="mechanicsIds")  # Array of String (UUIDs)
     # referencing the users table in PostgreSQL.
@@ -96,9 +98,45 @@ class WorkOrder(Document):
     items: list[WorkOrderItem] = Field(default=[])
 
     # --- Totals (Optional, as they are calculated) ---
-    final_total_price_without_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
-    final_total_iva: Decimal128 | None = Field(None, alias="finalTotalIVA")
-    final_total_price_with_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
+    final_total_price_without_iva: PyDecimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
+    final_total_iva: PyDecimal128 | None = Field(None, alias="finalTotalIVA")
+    final_total_price_with_iva: PyDecimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
+
+    def calculate_totals(self):
+        """
+        Iterates over items, calculates totals using Python Decimal,
+        and updates the summary fields.
+        """
+        total_excl_iva = Decimal("0.00")
+        total_iva = Decimal("0.00")
+        total_incl_iva = Decimal("0.00")
+
+        for item in self.items:
+            # Convert BSON Decimal128 -> Python Decimal
+            qty = item.quantity.to_decimal()
+            unit_price = item.unit_price_without_iva.to_decimal()
+            iva_rate = item.iva_rate.to_decimal()
+
+            # Calculate Row Totals
+            row_excl = qty * unit_price
+            row_iva = row_excl * iva_rate
+            row_incl = row_excl + row_iva
+
+            # (Optional) Update the item's cached total if you want self-healing data
+            # item.total_price_with_iva = Decimal128(row_incl.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+            # Accumulate
+            total_excl_iva += row_excl
+            total_iva += row_iva
+            total_incl_iva += row_incl
+
+        # Round and Convert back to BSON Decimal128
+        # Standard currency rounding to 2 decimal places
+        cents = Decimal("0.01")
+
+        self.final_total_price_without_iva = Decimal128(total_excl_iva.quantize(cents, rounding=ROUND_HALF_UP))
+        self.final_total_iva = Decimal128(total_iva.quantize(cents, rounding=ROUND_HALF_UP))
+        self.final_total_price_with_iva = Decimal128(total_incl_iva.quantize(cents, rounding=ROUND_HALF_UP))
 
     # --- Timestamps ---
     entry_date: Annotated[datetime, Indexed()] = Field(..., alias="entryDate")
@@ -133,6 +171,7 @@ class WorkOrder(Document):
 
     # Keep updated_at field fresh
     async def save(self, *args, **kwargs):
+        self.calculate_totals()
         self.updated_at = datetime.now(UTC)
         return await super().save(*args, **kwargs)
 
@@ -141,8 +180,8 @@ class WorkOrder(Document):
 class WorkOrderCreate(BaseModel):
     """Schema for creating a new Work Order."""
 
-    client_id: ObjectId = Field(..., alias="clientId")
-    vehicle_id: ObjectId = Field(..., alias="vehicleId")
+    client_id: PyObjectId = Field(..., alias="clientId")
+    vehicle_id: PyObjectId = Field(..., alias="vehicleId")
     entry_date: datetime = Field(..., alias="entryDate")
     client_observations: str | None = Field(None, alias="clientObservations")
 
@@ -177,9 +216,9 @@ class WorkOrderOut(BaseModel):
     quote: Quote | None = Field(None)
     items: list[WorkOrderItem] = Field(default=[])
 
-    final_total_price_without_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
-    final_total_iva: Decimal128 | None = Field(None, alias="finalTotalIVA")
-    final_total_price_with_iva: Decimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
+    final_total_price_without_iva: PyDecimal128 | None = Field(None, alias="finalTotalPriceWithoutIVA")
+    final_total_iva: PyDecimal128 | None = Field(None, alias="finalTotalIVA")
+    final_total_price_with_iva: PyDecimal128 | None = Field(None, alias="finalTotalPriceWithIVA")
 
     entry_date: datetime = Field(..., alias="entryDate")
     diagnosis_registered_at: datetime | None = Field(None, alias="diagnosisRegisteredAt")

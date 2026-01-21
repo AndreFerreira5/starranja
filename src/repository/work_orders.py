@@ -10,7 +10,7 @@ from src.exceptions.work_orders import (
     WorkOrderDatabaseError,
     WorkOrderNumberConflictError,
 )
-from src.models.work_orders import Quote, WorkOrder, WorkOrderCreate, WorkOrderUpdate
+from src.models.work_orders import Quote, WorkOrder, WorkOrderCreate, WorkOrderStatus, WorkOrderUpdate
 from src.repository.decorators import handle_repo_errors
 
 logger = logging.getLogger(__name__)
@@ -278,3 +278,9 @@ class WorkOrderRepo:
 
         logger.info(f"Successfully deleted work order: {work_order_id}")
         return True
+
+    @handle_repo_errors("get_by_status")
+    async def get_by_status(self, status: WorkOrderStatus) -> list[WorkOrder]:
+        """Fetch all work orders with a specific status, newest first."""
+        # Use string syntax "-fieldName" for descending sort
+        return await WorkOrder.find(WorkOrder.status == status).sort("-entryDate").to_list()

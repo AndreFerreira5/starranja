@@ -114,9 +114,7 @@ async def test_get_appointment_by_id_success(appointment_repo, sample_appointmen
     assert found.id == sample_appointment.id
 
 
-async def test_get_appointment_by_id_failed(
-    appointment_repo,
-):
+async def test_get_appointment_by_id_failed(appointment_repo):
     # This will fail with NotImplementedError
     found = await appointment_repo.get_appointment_by_id(ObjectId())  # Random, non-existent ID
     assert found is None
