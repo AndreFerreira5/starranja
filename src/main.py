@@ -2,9 +2,10 @@ import logging
 from contextlib import asynccontextmanager
 
 import uvicorn
+from beanie import init_beanie
 from fastapi import FastAPI
 
-from src.db.connection import auth_db_connect, auth_db_disconnect, mongo_db_connect, mongo_db_disconnect
+from src.db.connection import auth_db_connect, auth_db_disconnect, mongo_db, mongo_db_connect, mongo_db_disconnect
 from src.exceptions.clients import (
     ClientDatabaseError,
     ClientNotFoundError,
@@ -36,6 +37,12 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
+from src.models.appointments import Appointment
+from src.models.client import Client
+from src.models.invoices import Invoice
+from src.models.supplier_order import SupplierOrder
+from src.models.vehicle import Vehicle
+from src.models.work_orders import WorkOrder
 from src.routes import auth, invoices, users, work_orders
 
 # configure logging globally
@@ -47,7 +54,22 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     await auth_db_connect()
     await mongo_db_connect()
+
+    await init_beanie(
+        database=mongo_db.database,
+        document_models=[
+            Invoice,
+            Client,
+            Vehicle,
+            WorkOrder,
+            SupplierOrder,
+            Appointment,
+        ],
+        allow_index_dropping=True,
+    )
+
     yield
+
     await auth_db_disconnect()
     await mongo_db_disconnect()
 
