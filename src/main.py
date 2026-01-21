@@ -36,7 +36,7 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-from src.routes import auth, clients, users, work_orders, appointments
+from src.routes import appointments, auth, clients, users, work_orders
 
 # configure logging globally
 configure_logging()
