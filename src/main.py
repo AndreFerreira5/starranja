@@ -36,7 +36,7 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-from src.routes import auth, clients, users, work_orders
+from src.routes import auth, clients, users, vehicle, work_orders
 
 # configure logging globally
 configure_logging()
@@ -72,6 +72,7 @@ app.include_router(auth.router, prefix="/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(work_orders.router)
 app.include_router(clients.router)
+app.include_router(vehicle.router)
 
 
 @app.get("/ping")
