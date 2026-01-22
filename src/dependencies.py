@@ -9,8 +9,8 @@ from src.authentication.decorators import token_required
 from src.db.connection import get_mongo_db
 from src.repository.appointments import AppointmentRepo
 from src.repository.client import ClientRepo
-from src.repository.vehicle import VehicleRepo
 from src.repository.invoices import InvoiceRepo
+from src.repository.vehicle import VehicleRepo
 from src.repository.work_orders import WorkOrderRepo
 
 # --- REMOVE the local get_database(request: Request) function entirely ---
