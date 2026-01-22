@@ -108,8 +108,8 @@ async def login_user(
             key="refresh_token",
             value=refresh_token,
             httponly=True,  # Mitigates XSS (JS cannot access this)
-            secure=True,  # Only sends over HTTPS (False for localhost testing if not https)
-            samesite="strict",  # CSRF protection
+            secure=False,  # Only sends over HTTPS (False for localhost testing if not https)
+            samesite="lax",  # CSRF protection
             max_age=7 * 24 * 60 * 60,  # 7 days in seconds
         )
 
@@ -395,8 +395,8 @@ async def refresh_access_token(
             key="refresh_token",
             value=new_refresh_token,
             httponly=True,
-            secure=True,  # Set False if testing on localhost without HTTPS
-            samesite="strict",
+            secure=False,  # Set False if testing on localhost without HTTPS
+            samesite="lax",
             max_age=7 * 24 * 60 * 60,  # 7 days
         )
 

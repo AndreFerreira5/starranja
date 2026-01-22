@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import uvicorn
 from beanie import init_beanie
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.db.connection import auth_db_connect, auth_db_disconnect, mongo_db, mongo_db_connect, mongo_db_disconnect
 from src.exceptions.clients import (
@@ -97,6 +98,14 @@ app.include_router(invoices.router, prefix="/invoices", tags=["Invoices"])
 app.include_router(clients.router, prefix="/clients", tags=["Clients"])
 app.include_router(appointments.router, prefix="/appointments", tags=["Appointments"])
 app.include_router(vehicle.router, prefix="/vehicles", tags=["Vehicles"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins="http://.*",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/ping")
