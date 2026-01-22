@@ -2,15 +2,16 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from beanie import Document, Indexed
-from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+from src.models.custom_types import PyObjectId
 
 VIN = Annotated[str, StringConstraints(min_length=17, max_length=17)]
 
 
 # - This is the main entity model, as it is defined in the db table, it is used
 # - The (Document) is a base class for MongoDB models,
-#   that means the Beanie will map the class to the collection - this is done in the class Settings below
+#   that means the Beanie will map  class to the collection - this is done in the class Settings below
 
 # - Indexed means the field will have an Index for faster queries
 
@@ -18,7 +19,7 @@ VIN = Annotated[str, StringConstraints(min_length=17, max_length=17)]
 # - Field is just for us to keep the model properties named correctly with python (snake_case) and still use the
 #   table fields original name (camelCase)
 class Vehicle(Document):
-    client_id: Annotated[ObjectId, Indexed()]
+    client_id: Annotated[PyObjectId, Indexed()]
     license_plate: Annotated[str, Indexed(unique=True)] = Field(..., alias="licensePlate")
     brand: str
     model: str = Field(..., min_length=1)
@@ -63,7 +64,7 @@ class VehicleBase(BaseModel):
 #   defined above and has client_id because when creating a vehicle we need to attach
 #   it to its owner/client
 class VehicleCreate(VehicleBase):
-    client_id: ObjectId = Field(..., alias="clientId")
+    client_id: PyObjectId = Field(..., alias="clientId")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 

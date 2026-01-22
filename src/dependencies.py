@@ -10,6 +10,7 @@ from src.db.connection import get_mongo_db
 from src.repository.appointments import AppointmentRepo
 from src.repository.client import ClientRepo
 from src.repository.invoices import InvoiceRepo
+from src.repository.vehicle import VehicleRepo
 from src.repository.work_orders import WorkOrderRepo
 
 # --- REMOVE the local get_database(request: Request) function entirely ---
@@ -42,6 +43,15 @@ def get_client_repo(
 ) -> ClientRepo:
     """Dependency to provide ClientRepo."""
     return ClientRepo(db)
+
+
+def get_vehicle_repo(
+    db=Depends(get_mongo_db),
+) -> "VehicleRepo":
+    """Dependency to provide VehicleRepo."""
+    from src.repository.vehicle import VehicleRepo
+
+    return VehicleRepo(db)
 
 
 def get_current_user_id(payload: dict = Depends(token_required())) -> UUID:
