@@ -34,6 +34,8 @@ class Client(Document):
     class Settings:
         name = "clients"  # collection name
 
+        validate_on_save = False
+
         # Custom indexes
         indexes = [
             IndexModel(
