@@ -123,6 +123,12 @@ class SupplierOrderRepo:
 
         return orders
 
+    @handle_repo_errors("get_all", SupplierOrderDatabaseError)
+    async def get_all(self) -> list[SupplierOrder]:
+        """Retrieve all supplier orders."""
+        logger.debug("Retrieving all supplier orders")
+        return await SupplierOrder.find_all().to_list()
+
     @handle_repo_errors("update", SupplierOrderDatabaseError)
     async def update(self, order_id: ObjectId, update_data: SupplierOrderUpdate) -> SupplierOrder | None:
         """

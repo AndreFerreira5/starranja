@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID
 
-from beanie import Document
+from beanie import Document, PydanticObjectId
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
 from pymongo import IndexModel
@@ -32,7 +32,7 @@ class SupplierOrder(Document):
 
     # --- Links ---
     # Optional: Only present if this order is strictly for a specific repair job
-    work_order_id: ObjectId | None = Field(None, alias="workOrderId")
+    work_order_id: str | ObjectId | None = Field(None, alias="workOrderId")
 
     # User (PostgreSQL) who placed the order
     created_by_id: UUID = Field(..., alias="createdById")
@@ -79,7 +79,7 @@ class SupplierOrderCreate(BaseModel):
 
     supplier_name: str = Field(..., alias="supplierName")
     description: str
-    work_order_id: ObjectId | None = Field(None, alias="workOrderId")
+    work_order_id: str | ObjectId | None = Field(None, alias="workOrderId")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
@@ -95,12 +95,15 @@ class SupplierOrderUpdate(BaseModel):
 
 
 class SupplierOrderOut(BaseModel):
-    """Full Supplier Order schema for API responses."""
+    # Use PydanticObjectId for the ID field to handle the _id mapping automatically
+    id: PydanticObjectId = Field(..., alias="_id")
 
-    id: str = Field(..., alias="_id")
     supplier_name: str = Field(..., alias="supplierName")
     description: str
-    work_order_id: str | None = Field(None, alias="workOrderId")
+
+    # Allow ObjectId for work_order_id as well
+    work_order_id: PydanticObjectId | None = Field(None, alias="workOrderId")
+
     status: SupplierOrderStatus
     created_by_id: UUID = Field(..., alias="createdById")
     order_date: datetime = Field(..., alias="orderDate")
