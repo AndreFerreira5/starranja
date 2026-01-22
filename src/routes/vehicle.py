@@ -8,7 +8,7 @@ from src.dependencies import get_current_user_id, get_vehicle_repo
 from src.models.vehicle import Vehicle, VehicleCreate, VehicleUpdate
 from src.repository.vehicle import VehicleRepo
 
-router = APIRouter(prefix="/vehicles", tags=["Vehicles"])
+router = APIRouter()
 
 
 @router.post("/", response_model=Vehicle, status_code=status.HTTP_201_CREATED)
@@ -91,7 +91,7 @@ async def list_vehicles(
             raise HTTPException(status_code=404, detail="No vehicles found for the given client ID")
         return vehicles
 
-    return []
+    return await vehicle_repo.get_all()
 
 
 @router.patch("/{vehicle_id}", response_model=Vehicle)

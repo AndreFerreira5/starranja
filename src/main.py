@@ -37,7 +37,6 @@ from src.exceptions.work_orders import (
     WorkOrderNumberConflictError,
 )
 from src.logging_config import configure_logging
-
 from src.models.appointments import Appointment
 from src.models.client import Client
 from src.models.invoices import Invoice

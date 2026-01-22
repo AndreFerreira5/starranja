@@ -202,6 +202,53 @@ async def test_get_vehicles_by_client_id_not_found(client):
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
+async def test_get_all_vehicles_success(client, sample_vehicle):
+    """Test retrieving all vehicles when no filter is provided."""
+
+    # 1. Create a SECOND vehicle to ensure we verify a list return
+    # (sample_vehicle creates the first one)
+    second_vehicle = Vehicle(
+        client_id=sample_vehicle.client_id,
+        license_plate="ZZ-88-XX",
+        brand="Ford",
+        model="Focus",
+        kilometers=50000,
+        vin="VIN12345678901234",
+    )
+    await second_vehicle.save()
+
+    # 2. Act: Call the endpoint with NO query parameters
+    response = await client.get("/vehicles/")
+
+    # 3. Assert
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    # Should be a list
+    assert isinstance(data, list)
+    assert len(data) >= 2
+
+    # Verify IDs are present
+    returned_ids = [item["_id"] for item in data]
+    assert str(sample_vehicle.id) in returned_ids
+    assert str(second_vehicle.id) in returned_ids
+
+
+async def test_get_all_vehicles_empty(client):
+    """Test retrieving all vehicles when the DB is empty."""
+
+    # Clean up the DB for this specific test
+    await Vehicle.find_all().delete()
+
+    response = await client.get("/vehicles/")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+
+    assert isinstance(data, list)
+    assert len(data) == 0
+
+
 async def test_update_vehicle_success(client, sample_vehicle):
     """Test updating a vehicle via the API."""
     update_payload = {
