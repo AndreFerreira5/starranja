@@ -43,7 +43,7 @@ from src.models.invoices import Invoice
 from src.models.supplier_order import SupplierOrder
 from src.models.vehicle import Vehicle
 from src.models.work_orders import WorkOrder
-from src.routes import appointments, auth, clients, invoices, supplier_orders, users, work_orders
+from src.routes import appointments, auth, clients, invoices, supplier_orders, users, vehicle, work_orders
 
 # configure logging globally
 configure_logging()

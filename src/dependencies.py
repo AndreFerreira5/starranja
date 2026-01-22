@@ -51,7 +51,7 @@ def get_supplier_order_repo(
 ) -> SupplierOrderRepo:
     """Dependency to provide SupplierOrderRepo."""
     return SupplierOrderRepo(db)
-  
+
 
 def get_vehicle_repo(
     db=Depends(get_mongo_db),
