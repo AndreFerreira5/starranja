@@ -97,6 +97,7 @@ app.include_router(invoices.router, prefix="/invoices", tags=["Invoices"])
 app.include_router(clients.router, prefix="/clients", tags=["Clients"])
 app.include_router(appointments.router, prefix="/appointments", tags=["Appointments"])
 app.include_router(supplier_orders.router, prefix="/supplier-orders", tags=["Supplier Orders"])
+app.include_router(vehicle.router, prefix="/vehicles", tags=["Vehicles"])
 
 
 @app.get("/ping")

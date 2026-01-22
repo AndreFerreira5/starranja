@@ -79,6 +79,17 @@ class VehicleRepo:
 
         return await Vehicle.find(Vehicle.client_id == client_id).to_list()
 
+    @handle_repo_errors("get_all_vehicles")
+    async def get_all(self) -> list[Vehicle]:
+        """
+        Retrieve all vehicles from the database.
+
+        Returns:
+            List of all Vehicle documents
+        """
+        logger.debug("Retrieving all vehicles")
+        return await Vehicle.find_all().to_list()
+
     @handle_repo_errors("update_vehicle")
     async def update(self, vehicle_id: ObjectId, update_data: VehicleUpdate) -> Vehicle | None:
         """
